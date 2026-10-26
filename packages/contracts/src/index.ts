@@ -8,8 +8,26 @@ export type ClientSource = "web" | "miniapp" | "import";
 export interface Profile {
   id: Id;
   displayName: string;
+  email: string;
   phoneMasked?: string;
   status: "active" | "disabled" | "deletion_pending";
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  displayName: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthSession {
+  user: Profile;
+  accessToken: string;
+  expiresAt: IsoDateTime;
 }
 
 export interface PlanSummary {

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FitPlan 帮助健身初学者选择训练计划并记录训练进度">
+  <title>FitPlan - 从今天开始训练</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="index.html">FitPlan<span>.</span></a>
+    <nav aria-label="主导航">
+      <a href="#plans">训练计划</a>
+      <a href="#recent">最近记录</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">适合刚开始健身的你</p>
+      <h1>从今天开始，<br><span>完成一次训练</span></h1>
+      <p class="hero-description">选择适合自己的计划，记录每次训练的重量和次数，看见自己的进步。</p>
+      <a class="primary-button" href="#plans">查看训练计划 <span aria-hidden="true">→</span></a>
+      <div class="hero-stats" aria-label="网站特点">
+        <div><strong>3</strong><span>种训练计划</span></div>
+        <div><strong>0</strong><span>器械门槛</span></div>
+        <div><strong>100%</strong><span>专注进步</span></div>
+      </div>
+    </section>
+
+    <section id="plans" class="plans-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">选择你的节奏</p>
+          <h2>适合你的训练计划</h2>
+        </div>
+        <p>第一版提供三个固定计划，从今天开始建立训练习惯。</p>
+      </div>
+
+      <div class="plan-grid">
+        <article class="plan-card featured">
+          <div class="card-top"><p class="plan-level">推荐 · 适合初学者</p><span>01</span></div>
+          <h3>每周三练</h3>
+          <p>每周完成三次全身训练，节奏稳定，适合刚开始建立习惯的人。</p>
+          <ul><li>每次 30–40 分钟</li><li>覆盖全身基础动作</li><li>适合循序渐进</li></ul>
+          <button type="button" data-plan="three-days">选择这个计划</button>
+        </article>
+
+        <article class="plan-card">
+          <div class="card-top"><p class="plan-level">零基础</p><span>02</span></div>
+          <h3>新手全身</h3>
+          <p>以基础动作和轻重量为主，重点学习动作姿势和训练节奏。</p>
+          <ul><li>每次 25–35 分钟</li><li>动作简单易上手</li><li>重视动作质量</li></ul>
+          <button type="button" data-plan="beginner">选择这个计划</button>
+        </article>
+
+        <article class="plan-card">
+          <div class="card-top"><p class="plan-level">无需器械</p><span>03</span></div>
+          <h3>居家训练</h3>
+          <p>不需要复杂设备，用自重动作完成一次高效训练。</p>
+          <ul><li>每次 20–30 分钟</li><li>在家即可完成</li><li>自由安排时间</li></ul>
+          <button type="button" data-plan="home">选择这个计划</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="recent" class="recent-section">
+      <div class="section-heading">
+        <div><p class="eyebrow">记录每一次努力</p><h2>最近的训练</h2></div>
+        <p>完成第一次训练后，记录会显示在这里。</p>
+      </div>
+      <div class="empty-state">
+        <span class="empty-icon">＋</span>
+        <h3>还没有训练记录</h3>
+        <p>选择计划并记录你的第一次训练。</p>
+        <a href="#plans">开始第一次训练</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="logo" href="index.html">FitPlan<span>.</span></a>
+    <p>训练内容仅供一般健身参考，不替代医生或专业教练的建议。</p>
+    <p>© 2026 FitPlan</p>
+  </footer>
+  <script src="app.js" defer></script>
+</body>
+</html>

@@ -334,3 +334,153 @@ button:focus-visible, a:focus-visible {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
+
+
+/* Interactive training panel */
+.workout-panel {
+  width: min(1180px, calc(100% - 48px));
+  margin: -60px auto 120px;
+  padding: clamp(26px, 4vw, 48px);
+  border: 1px solid var(--green-dark);
+  border-radius: 28px;
+  background: var(--green-dark);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.workout-panel[hidden] { display: none; }
+.workout-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+.workout-heading h2 {
+  margin: 0 0 8px;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+.workout-heading p:last-child { margin: 0; color: rgba(255,255,255,.58); }
+.close-button {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  font-size: 1.7rem;
+  cursor: pointer;
+}
+.exercise-fieldset {
+  margin: 0 0 14px;
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  background: rgba(255,255,255,.045);
+}
+.exercise-fieldset legend {
+  padding: 0 10px;
+  font-weight: 900;
+}
+.exercise-fieldset legend span {
+  margin-right: 12px;
+  color: var(--green);
+  font-size: .72rem;
+  letter-spacing: .12em;
+}
+.exercise-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.exercise-fields label {
+  display: grid;
+  gap: 7px;
+  color: rgba(255,255,255,.6);
+  font-size: .75rem;
+  font-weight: 700;
+}
+.exercise-fields input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 10px;
+  background: rgba(0,0,0,.13);
+  color: #fff;
+  font: inherit;
+}
+.save-workout {
+  width: 100%;
+  margin-top: 12px;
+  padding: 15px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--green);
+  color: var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+.record-list { display: grid; gap: 16px; }
+.workout-record {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+}
+.record-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.record-head .eyebrow { margin-bottom: 6px; color: var(--muted); }
+.record-head h3 { margin: 0; font-size: 1.5rem; }
+.record-badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #e5f8c6;
+  color: var(--green-dark);
+  font-size: .7rem;
+  font-weight: 900;
+}
+.workout-record ul {
+  margin: 20px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+.workout-record li {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 7px 0;
+}
+.workout-record li span { color: var(--muted); }
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 20;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: .84rem;
+  font-weight: 800;
+  opacity: 0;
+  transform: translate(-50%, 16px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (max-width: 620px) {
+  .workout-panel { width: calc(100% - 32px); margin-top: -32px; }
+  .exercise-fields { grid-template-columns: 1fr; }
+  .workout-record { padding: 22px; }
+  .workout-record li { align-items: flex-start; }
+}

@@ -1,13 +1,26 @@
+import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ApiSuccess, PlanSummary, WorkoutSession } from "@fitplan/contracts";
+import type { ApiSuccess, AuthSession, PlanSummary, WorkoutSession } from "@fitplan/contracts";
 import { buildApp } from "./app.js";
 
 type TestApp = ReturnType<typeof buildApp>;
 
 let app: TestApp;
+let accessToken: string;
 
-beforeEach(function () {
+beforeEach(async function () {
   app = buildApp();
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/v1/auth/register",
+    payload: {
+      email: "user-" + randomUUID() + "@example.com",
+      password: "FitPlan123!",
+      displayName: "测试用户"
+    }
+  });
+  expect(response.statusCode).toBe(201);
+  accessToken = response.json<ApiSuccess<AuthSession>>().data.accessToken;
 });
 
 afterEach(async function () {
@@ -28,6 +41,7 @@ describe("FitPlan API", function () {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/workouts",
+      headers: { authorization: "Bearer " + accessToken },
       payload: {
         planId: "plan-three-days",
         performedAt: new Date().toISOString(),
@@ -56,7 +70,8 @@ describe("FitPlan API", function () {
 
     const deleteResponse = await app.inject({
       method: "DELETE",
-      url: "/api/v1/workouts/" + body.data.id
+      url: "/api/v1/workouts/" + body.data.id,
+      headers: { authorization: "Bearer " + accessToken }
     });
     expect(deleteResponse.statusCode).toBe(204);
   });
@@ -65,6 +80,7 @@ describe("FitPlan API", function () {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/workouts",
+      headers: { authorization: "Bearer " + accessToken },
       payload: {
         performedAt: new Date().toISOString(),
         exercises: []
@@ -72,5 +88,10 @@ describe("FitPlan API", function () {
     });
 
     expect(response.statusCode).toBe(400);
+  });
+
+  it("rejects workout access without a session", async function () {
+    const response = await app.inject({ method: "GET", url: "/api/v1/workouts" });
+    expect(response.statusCode).toBe(401);
   });
 });

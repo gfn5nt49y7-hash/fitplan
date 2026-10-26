@@ -1,10 +1,13 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import type {
+  AuthSession,
   CreateWorkoutSessionRequest,
   ExerciseSummary,
+  LoginRequest,
   PlannedExercise,
   PlanSummary,
   Profile,
+  RegisterRequest,
   WeeklyStats,
   WorkoutSession
 } from "@fitplan/contracts";
@@ -137,13 +140,24 @@ const planExercises = new Map<string, PlannedExercise[]>([
   ]
 ]);
 
-const profile: Profile = {
-  id: "demo-user",
-  displayName: "FitPlan 体验用户",
-  status: "active"
-};
+interface UserRecord {
+  id: string;
+  email: string;
+  displayName: string;
+  passwordSalt: string;
+  passwordHash: string;
+  status: Profile["status"];
+}
 
-let workouts: WorkoutSession[] = [];
+interface SessionRecord {
+  userId: string;
+  expiresAt: Date;
+}
+
+const usersByEmail = new Map<string, UserRecord>();
+const usersById = new Map<string, UserRecord>();
+const sessions = new Map<string, SessionRecord>();
+const workoutsByUser = new Map<string, WorkoutSession[]>();
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -166,11 +180,93 @@ function getExercises(): ExerciseSummary[] {
   return clone(exercises);
 }
 
-function listWorkouts(): WorkoutSession[] {
-  return clone(workouts);
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
 }
 
-function createWorkout(input: CreateWorkoutSessionRequest): WorkoutSession {
+function hashPassword(password: string, salt: string): string {
+  return scryptSync(password, salt, 64).toString("hex");
+}
+
+function sessionKey(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function getProfile(userId: string): Profile | undefined {
+  const user = usersById.get(userId);
+  if (!user) return undefined;
+  return {
+    id: user.id,
+    displayName: user.displayName,
+    email: user.email,
+    status: user.status
+  };
+}
+
+function createSession(userId: string): AuthSession {
+  const user = getProfile(userId);
+  if (!user) throw new Error("User not found");
+
+  const accessToken = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  sessions.set(sessionKey(accessToken), { userId, expiresAt });
+  return {
+    user: clone(user),
+    accessToken,
+    expiresAt: expiresAt.toISOString()
+  };
+}
+
+function registerUser(input: RegisterRequest): AuthSession | undefined {
+  const email = normalizeEmail(input.email);
+  if (usersByEmail.has(email)) return undefined;
+
+  const passwordSalt = randomBytes(16).toString("hex");
+  const user: UserRecord = {
+    id: randomUUID(),
+    email,
+    displayName: input.displayName.trim(),
+    passwordSalt,
+    passwordHash: hashPassword(input.password, passwordSalt),
+    status: "active"
+  };
+  usersByEmail.set(email, user);
+  usersById.set(user.id, user);
+  workoutsByUser.set(user.id, []);
+  return createSession(user.id);
+}
+
+function loginUser(input: LoginRequest): AuthSession | undefined {
+  const user = usersByEmail.get(normalizeEmail(input.email));
+  if (!user || user.status !== "active") return undefined;
+
+  const actual = Buffer.from(hashPassword(input.password, user.passwordSalt), "hex");
+  const expected = Buffer.from(user.passwordHash, "hex");
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    return undefined;
+  }
+  return createSession(user.id);
+}
+
+function getUserByToken(token: string): Profile | undefined {
+  const record = sessions.get(sessionKey(token));
+  if (!record) return undefined;
+  if (record.expiresAt.getTime() <= Date.now()) {
+    sessions.delete(sessionKey(token));
+    return undefined;
+  }
+  return getProfile(record.userId);
+}
+
+function deleteSession(token: string): void {
+  sessions.delete(sessionKey(token));
+}
+
+function listWorkouts(userId: string): WorkoutSession[] {
+  return clone(workoutsByUser.get(userId) ?? []);
+}
+
+function createWorkout(userId: string, input: CreateWorkoutSessionRequest): WorkoutSession {
   const plan = plans.find((item) => item.id === input.planId);
   const workout: WorkoutSession = {
     ...clone(input),
@@ -178,18 +274,22 @@ function createWorkout(input: CreateWorkoutSessionRequest): WorkoutSession {
     createdVia: "web",
     ...(plan ? { planName: plan.name } : {})
   };
+  const workouts = workoutsByUser.get(userId) ?? [];
   workouts.unshift(workout);
+  workoutsByUser.set(userId, workouts);
   return clone(workout);
 }
 
-function deleteWorkout(workoutId: string): boolean {
+function deleteWorkout(userId: string, workoutId: string): boolean {
+  const workouts = workoutsByUser.get(userId) ?? [];
   const index = workouts.findIndex((workout) => workout.id === workoutId);
   if (index < 0) return false;
   workouts.splice(index, 1);
   return true;
 }
 
-function getWeeklyStats(): WeeklyStats {
+function getWeeklyStats(userId: string): WeeklyStats {
+  const workouts = workoutsByUser.get(userId) ?? [];
   const now = new Date();
   const weekStart = new Date(now);
   const mondayOffset = (weekStart.getDay() + 6) % 7;
@@ -241,7 +341,11 @@ function getWeeklyStats(): WeeklyStats {
 }
 
 export const mockStore = {
-  getProfile: () => clone(profile),
+  registerUser,
+  loginUser,
+  getUserByToken,
+  deleteSession,
+  getProfile: (userId: string) => clone(getProfile(userId)),
   listPlans,
   getPlan,
   getExercises,

@@ -1,8 +1,19 @@
 import Fastify, { type FastifyServerOptions } from "fastify";
 import cors from "@fastify/cors";
 import { z } from "zod";
-import type { ApiError, ApiSuccess } from "@fitplan/contracts";
+import type { ApiError, ApiSuccess, Profile } from "@fitplan/contracts";
 import { mockStore } from "./store.js";
+
+const registerSchema = z.object({
+  email: z.string().trim().email().max(254),
+  password: z.string().min(8).max(72),
+  displayName: z.string().trim().min(2).max(40)
+});
+
+const loginSchema = z.object({
+  email: z.string().trim().email().max(254),
+  password: z.string().min(1).max(72)
+});
 
 const workoutSetSchema = z
   .object({
@@ -57,6 +68,19 @@ function failure(code: string, message: string, requestId: string): ApiError {
   return { error: { code, message }, requestId };
 }
 
+function readBearerToken(authorization: string | undefined): string | undefined {
+  if (!authorization?.startsWith("Bearer ")) return undefined;
+  const token = authorization.slice("Bearer ".length).trim();
+  return token || undefined;
+}
+
+function authenticate(authorization: string | undefined): { token: string; user: Profile } | undefined {
+  const token = readBearerToken(authorization);
+  if (!token) return undefined;
+  const user = mockStore.getUserByToken(token);
+  return user ? { token, user } : undefined;
+}
+
 export function buildApp(options: FastifyServerOptions = {}) {
   const app = Fastify(options);
 
@@ -76,7 +100,56 @@ export function buildApp(options: FastifyServerOptions = {}) {
     mode: "mock"
   }));
 
-  app.get("/api/v1/me", async (request) => success(request.id, mockStore.getProfile()));
+  app.post("/api/v1/auth/register", async (request, reply) => {
+    const parsed = registerSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send(failure("VALIDATION_ERROR", "注册信息格式不正确", request.id));
+    }
+
+    const session = mockStore.registerUser(parsed.data);
+    if (!session) {
+      return reply.status(409).send(failure("EMAIL_EXISTS", "该邮箱已经注册", request.id));
+    }
+    return reply.status(201).send(success(request.id, session));
+  });
+
+  app.post("/api/v1/auth/login", async (request, reply) => {
+    const parsed = loginSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send(failure("VALIDATION_ERROR", "邮箱或密码格式不正确", request.id));
+    }
+
+    const session = mockStore.loginUser(parsed.data);
+    if (!session) {
+      return reply.status(401).send(failure("INVALID_CREDENTIALS", "邮箱或密码错误", request.id));
+    }
+    return success(request.id, session);
+  });
+
+  app.post("/api/v1/auth/logout", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+    mockStore.deleteSession(auth.token);
+    return reply.status(204).send();
+  });
+
+  app.get("/api/v1/auth/me", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
+    }
+    return success(request.id, auth.user);
+  });
+
+  app.get("/api/v1/me", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
+    }
+    return success(request.id, auth.user);
+  });
 
   app.get("/api/v1/plans", async (request) => success(request.id, mockStore.listPlans()));
 
@@ -90,9 +163,20 @@ export function buildApp(options: FastifyServerOptions = {}) {
 
   app.get("/api/v1/exercises", async (request) => success(request.id, mockStore.getExercises()));
 
-  app.get("/api/v1/workouts", async (request) => success(request.id, mockStore.listWorkouts()));
+  app.get("/api/v1/workouts", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+    return success(request.id, mockStore.listWorkouts(auth.user.id));
+  });
 
   app.post("/api/v1/workouts", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+
     const parsed = createWorkoutSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -109,19 +193,30 @@ export function buildApp(options: FastifyServerOptions = {}) {
       return reply.status(400).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
 
-    const workout = mockStore.createWorkout(parsed.data);
+    const workout = mockStore.createWorkout(auth.user.id, parsed.data);
     return reply.status(201).send(success(request.id, workout));
   });
 
   app.delete<{ Params: { workoutId: string } }>("/api/v1/workouts/:workoutId", async (request, reply) => {
-    const deleted = mockStore.deleteWorkout(request.params.workoutId);
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+
+    const deleted = mockStore.deleteWorkout(auth.user.id, request.params.workoutId);
     if (!deleted) {
       return reply.status(404).send(failure("WORKOUT_NOT_FOUND", "训练记录不存在", request.id));
     }
     return reply.status(204).send();
   });
 
-  app.get("/api/v1/stats/weekly", async (request) => success(request.id, mockStore.getWeeklyStats()));
+  app.get("/api/v1/stats/weekly", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+    return success(request.id, mockStore.getWeeklyStats(auth.user.id));
+  });
 
   return app;
 }

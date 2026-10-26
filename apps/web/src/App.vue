@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
 import type {
+  AuthSession,
   CreateWorkoutSessionRequest,
   PlannedExercise,
   PlanSummary,
+  Profile,
   WeeklyStats,
   WorkoutSession
 } from "@fitplan/contracts";
-import { apiRequest } from "./api";
+import AuthView from "./AuthView.vue";
+import { apiRequest, clearAccessToken, getAccessToken } from "./api";
 
 interface PlanDetail {
   plan: PlanSummary;
@@ -23,8 +26,10 @@ interface DraftEntry {
 const plans = ref<PlanSummary[]>([]);
 const workouts = ref<WorkoutSession[]>([]);
 const stats = ref<WeeklyStats | null>(null);
+const currentUser = ref<Profile | null>(null);
 const selectedPlan = ref<PlanDetail | null>(null);
 const loading = ref(true);
+const authLoading = ref(true);
 const saving = ref(false);
 const error = ref("");
 const notice = ref("");
@@ -47,6 +52,46 @@ async function loadData() {
   } finally {
     loading.value = false;
   }
+}
+
+async function restoreSession() {
+  authLoading.value = true;
+  if (!getAccessToken()) {
+    authLoading.value = false;
+    loading.value = false;
+    return;
+  }
+
+  try {
+    currentUser.value = await apiRequest<Profile>("/api/v1/auth/me");
+    await loadData();
+  } catch (_cause) {
+    clearAccessToken();
+    currentUser.value = null;
+    loading.value = false;
+  } finally {
+    authLoading.value = false;
+  }
+}
+
+async function handleAuthenticated(session: AuthSession) {
+  currentUser.value = session.user;
+  authLoading.value = false;
+  await loadData();
+}
+
+async function logout() {
+  try {
+    await apiRequest<void>("/api/v1/auth/logout", { method: "POST" });
+  } catch (_cause) {
+    // The local session should still be cleared if the server session expired.
+  }
+  clearAccessToken();
+  currentUser.value = null;
+  plans.value = [];
+  workouts.value = [];
+  stats.value = null;
+  selectedPlan.value = null;
 }
 
 async function choosePlan(planId: string) {
@@ -154,20 +199,31 @@ function difficultyLabel(value: PlanSummary["difficulty"]) {
   return value === "beginner" ? "适合初学者" : "需要基础";
 }
 
-onMounted(loadData);
+onMounted(restoreSession);
 </script>
 
 <template>
-  <header class="site-header">
-    <a class="logo" href="#top">FitPlan<span>.</span></a>
-    <nav aria-label="主导航">
-      <a href="#plans">训练计划</a>
-      <a href="#recent">训练记录</a>
-      <span class="api-state">API 已连接</span>
-    </nav>
-  </header>
+  <div v-if="authLoading" class="auth-boot" aria-live="polite">
+    <span class="auth-boot-mark">F</span>
+    <p>正在恢复登录状态…</p>
+  </div>
 
-  <main id="top">
+  <AuthView v-else-if="!currentUser" @authenticated="handleAuthenticated" />
+
+  <template v-else>
+    <header class="site-header">
+      <a class="logo" href="#top">FitPlan<span>.</span></a>
+      <nav aria-label="主导航">
+        <a href="#plans">训练计划</a>
+        <a href="#recent">训练记录</a>
+        <div class="user-area">
+          <span>{{ currentUser.displayName }}</span>
+          <button type="button" @click="logout">退出</button>
+        </div>
+      </nav>
+    </header>
+
+    <main id="top">
     <section class="hero">
       <p class="eyebrow">你的第一步，从一次训练开始</p>
       <h1>用清晰的计划，<br /><span>记录每一次进步。</span></h1>
@@ -262,13 +318,14 @@ onMounted(loadData);
         </article>
       </div>
     </section>
-  </main>
+    </main>
 
-  <div v-if="notice" class="toast" role="status">{{ notice }}</div>
+    <div v-if="notice" class="toast" role="status">{{ notice }}</div>
 
-  <footer>
-    <a class="logo" href="#top">FitPlan<span>.</span></a>
-    <p>训练内容仅供一般健身参考，不替代医生或专业教练的建议。</p>
-    <p>© 2026 FitPlan</p>
-  </footer>
+    <footer>
+      <a class="logo" href="#top">FitPlan<span>.</span></a>
+      <p>训练内容仅供一般健身参考，不替代医生或专业教练的建议。</p>
+      <p>© 2026 FitPlan</p>
+    </footer>
+  </template>
 </template>

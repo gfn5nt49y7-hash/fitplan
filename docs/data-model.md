@@ -163,3 +163,61 @@
 ## 8. 后续扩展
 
 统计表可以先通过查询实时计算。只有数据量和性能达到需要时，再增加按周聚合的统计表。首期不提前增加支付、社交或 AI 相关表，避免数据结构过度复杂。
+
+
+## 9. 开源调研后的正式修订
+
+以下定义优先于前面第 3、4、5 节中的对应草案。正式实施时以本节和基于本节生成的 Prisma schema 为准。
+
+### workout_session_exercises
+
+该表保存一次训练中的动作快照和显示顺序。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | uuid, PK | 训练动作记录 ID |
+| session_id | uuid, FK workout_sessions | 所属训练 |
+| exercise_id | uuid, FK exercises, nullable | 原动作引用 |
+| exercise_name_snapshot | varchar(80) | 训练当时的动作名称 |
+| position | smallint | 动作在本次训练中的顺序 |
+| target_sets_snapshot | smallint, nullable | 训练当时的建议组数 |
+| target_reps_snapshot | integer, nullable | 训练当时的建议次数 |
+| target_seconds_snapshot | integer, nullable | 训练当时的建议时长 |
+| notes | varchar(500), nullable | 本次动作备注 |
+
+约束：同一 session_id 下的 position 唯一；删除训练会话时级联删除该记录。
+
+### workout_sets 修订
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | uuid, PK | 单组记录 ID |
+| session_exercise_id | uuid, FK workout_session_exercises | 所属训练动作 |
+| set_number | smallint | 第几组 |
+| set_type | varchar(20) | weight_reps、bodyweight、time |
+| weight_kg | numeric(6,2), nullable | 重量 |
+| reps | smallint, nullable | 次数 |
+| duration_seconds | integer, nullable | 静力动作持续时间 |
+| rpe | numeric(3,1), nullable | 主观强度 |
+
+约束：同一 session_exercise_id 和 set_number 唯一；weight_reps 与 bodyweight 类型必须有 reps，time 类型必须有 duration_seconds。
+
+### workout_sessions 补充字段
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| created_via | varchar(20) | web、miniapp、import |
+
+### 索引修订
+
+- workout_session_exercises(session_id, position)
+- workout_sets(session_exercise_id, set_number)
+- workout_sessions(user_id, performed_at desc)
+
+### 权限修订
+
+用户只能操作 workout_session_exercises 中 session_id 归属于当前用户的数据；workout_sets 的权限通过 session_exercise_id 追溯到 session 所有者。
+
+### 保留历史快照的原因
+
+训练计划属于可编辑的内容，训练记录属于历史事实。动作名称、目标组数和目标次数必须复制到训练记录中。这样管理员以后调整计划、重命名动作或下架动作时，不会改变用户过去的训练历史。

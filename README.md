@@ -30,3 +30,49 @@ FitPlan 是一个面向健身初学者的轻量训练计划与训练记录网站
 ## 健康提示
 
 训练内容仅供一般健身参考，不替代医生或专业教练的建议。开始新的训练计划前，请确认自身身体状况和动作安全。
+
+
+## 分支说明
+
+- main：当前 GitHub Pages 静态演示版
+- develop：正式版前后端开发分支
+
+正式版采用 pnpm monorepo：
+
+- apps/web：Vue 3 + TypeScript + Vite
+- apps/api：Fastify + TypeScript，当前使用内存模拟数据
+- packages/contracts：Web、API 与未来微信小程序共享的数据契约
+
+## 本地开发
+
+需要 Node.js 22 和 pnpm 10。
+
+安装依赖：
+
+    pnpm install
+
+启动 API：
+
+    pnpm dev:api
+
+另开一个终端启动网站：
+
+    pnpm dev:web
+
+默认地址：
+
+- 网站：http://localhost:5173
+- API：http://localhost:8787
+- 健康检查：http://localhost:8787/api/v1/health
+
+## 质量检查
+
+    pnpm typecheck
+    pnpm test
+    pnpm build
+
+GitHub Actions 会在 develop 和 main 分支推送时执行以上检查。
+
+## 开发阶段说明
+
+当前后端使用内存模拟数据，API 服务重启后训练记录会清空。这是为了先稳定前端接口和交互；下一步接入 PostgreSQL、手机号认证和云端数据同步。

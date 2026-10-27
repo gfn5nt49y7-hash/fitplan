@@ -111,14 +111,15 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.addHook("onSend", async (_request, reply, payload) => {
-    reply.header("x-fitplan-data-source", "memory");
+    reply.header("x-fitplan-data-source", "file");
     return payload;
   });
 
   app.get("/api/v1/health", async () => ({
     status: "ok",
     service: "fitplan-api",
-    mode: "mock"
+    mode: "file",
+    persistence: "local-json"
   }));
 
   app.post("/api/v1/auth/register", async (request, reply) => {

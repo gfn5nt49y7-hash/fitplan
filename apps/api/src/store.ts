@@ -1,4 +1,13 @@
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync
+} from "node:fs";
+import { dirname, isAbsolute, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
   AuthSession,
   CreateCustomPlanRequest,
@@ -516,6 +525,94 @@ const workoutsByUser = new Map<string, WorkoutSession[]>();
 const customPlansByUser = new Map<string, PlanSummary[]>();
 const customPlanExercisesByUser = new Map<string, PlannedExercise[]>();
 
+interface PersistedStore {
+  version: 1;
+  savedAt: string;
+  users: UserRecord[];
+  sessions: Array<{ tokenHash: string; userId: string; expiresAt: string }>;
+  workouts: Array<[string, WorkoutSession[]]>;
+  customPlans: Array<[string, PlanSummary[]]>;
+  customPlanExercises: Array<[string, PlannedExercise[]]>;
+}
+
+const moduleDirectory = dirname(fileURLToPath(import.meta.url));
+const configuredDataFile = process.env.FITPLAN_DATA_FILE?.trim();
+const dataFile = configuredDataFile
+  ? isAbsolute(configuredDataFile)
+    ? configuredDataFile
+    : resolve(process.cwd(), configuredDataFile)
+  : resolve(moduleDirectory, "..", ".data", "fitplan-store.json");
+const persistenceEnabled =
+  process.env.NODE_ENV !== "test" && process.env.FITPLAN_PERSISTENCE !== "off";
+
+function persistStore(): void {
+  if (!persistenceEnabled) return;
+
+  const snapshot: PersistedStore = {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    users: Array.from(usersByEmail.values()),
+    sessions: Array.from(sessions.entries()).map(([tokenHash, session]) => ({
+      tokenHash,
+      userId: session.userId,
+      expiresAt: session.expiresAt.toISOString()
+    })),
+    workouts: Array.from(workoutsByUser.entries()),
+    customPlans: Array.from(customPlansByUser.entries()),
+    customPlanExercises: Array.from(customPlanExercisesByUser.entries())
+  };
+
+  mkdirSync(dirname(dataFile), { recursive: true });
+  const temporaryFile = dataFile + "." + process.pid + ".tmp";
+  writeFileSync(temporaryFile, JSON.stringify(snapshot, null, 2), "utf8");
+  renameSync(temporaryFile, dataFile);
+}
+
+function loadPersistedStore(): void {
+  if (!persistenceEnabled || !existsSync(dataFile)) return;
+
+  try {
+    const snapshot = JSON.parse(readFileSync(dataFile, "utf8")) as PersistedStore;
+    if (snapshot.version !== 1) {
+      throw new Error("Unsupported store version: " + String(snapshot.version));
+    }
+
+    for (const user of snapshot.users ?? []) {
+      usersByEmail.set(user.email, user);
+      usersById.set(user.id, user);
+      workoutsByUser.set(user.id, workoutsByUser.get(user.id) ?? []);
+    }
+    for (const [userId, workouts] of snapshot.workouts ?? []) {
+      workoutsByUser.set(userId, workouts);
+    }
+    for (const [userId, plans] of snapshot.customPlans ?? []) {
+      customPlansByUser.set(userId, plans);
+    }
+    for (const [planId, plannedExercises] of snapshot.customPlanExercises ?? []) {
+      customPlanExercisesByUser.set(planId, plannedExercises);
+    }
+    for (const session of snapshot.sessions ?? []) {
+      const expiresAt = new Date(session.expiresAt);
+      if (expiresAt.getTime() > Date.now()) {
+        sessions.set(session.tokenHash, { userId: session.userId, expiresAt });
+      }
+    }
+  } catch (error) {
+    const corruptFile = dataFile + ".corrupt-" + Date.now();
+    try {
+      renameSync(dataFile, corruptFile);
+    } catch {
+      // Keep the original file if the backup rename is not possible.
+    }
+    console.error(
+      "FitPlan persistent store could not be loaded. A backup was kept if possible.",
+      error
+    );
+  }
+}
+
+loadPersistedStore();
+
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
@@ -567,6 +664,7 @@ function createCustomPlan(userId: string, input: CreateCustomPlanRequest) {
   currentPlans.push(plan);
   customPlansByUser.set(userId, currentPlans);
   customPlanExercisesByUser.set(id, plannedExercises);
+  persistStore();
   return { plan: clone(plan), exercises: clone(plannedExercises) };
 }
 
@@ -576,6 +674,7 @@ function deleteCustomPlan(userId: string, planId: string): boolean {
   if (index < 0) return false;
   currentPlans.splice(index, 1);
   customPlanExercisesByUser.delete(planId);
+  persistStore();
   return true;
 }
 
@@ -617,6 +716,7 @@ function createSession(userId: string): AuthSession {
   const accessToken = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   sessions.set(sessionKey(accessToken), { userId, expiresAt });
+  persistStore();
   return {
     user: clone(user),
     accessToken,
@@ -660,6 +760,7 @@ function getUserByToken(token: string): Profile | undefined {
   if (!record) return undefined;
   if (record.expiresAt.getTime() <= Date.now()) {
     sessions.delete(sessionKey(token));
+    persistStore();
     return undefined;
   }
   return getProfile(record.userId);
@@ -667,12 +768,14 @@ function getUserByToken(token: string): Profile | undefined {
 
 function deleteSession(token: string): void {
   sessions.delete(sessionKey(token));
+  persistStore();
 }
 
 function updateProfile(userId: string, input: UpdateProfileRequest): Profile | undefined {
   const user = usersById.get(userId);
   if (!user) return undefined;
   user.displayName = input.displayName.trim();
+  persistStore();
   return getProfile(userId);
 }
 
@@ -689,6 +792,7 @@ function deleteUser(userId: string): boolean {
   for (const [tokenHash, session] of sessions) {
     if (session.userId === userId) sessions.delete(tokenHash);
   }
+  persistStore();
   return true;
 }
 
@@ -709,6 +813,7 @@ function createWorkout(userId: string, input: CreateWorkoutSessionRequest): Work
   const workouts = workoutsByUser.get(userId) ?? [];
   workouts.unshift(workout);
   workoutsByUser.set(userId, workouts);
+  persistStore();
   return clone(workout);
 }
 
@@ -717,6 +822,7 @@ function deleteWorkout(userId: string, workoutId: string): boolean {
   const index = workouts.findIndex((workout) => workout.id === workoutId);
   if (index < 0) return false;
   workouts.splice(index, 1);
+  persistStore();
   return true;
 }
 
@@ -741,6 +847,7 @@ function updateWorkout(
       : {})
   };
   workouts[index] = updated;
+  persistStore();
   return clone(updated);
 }
 

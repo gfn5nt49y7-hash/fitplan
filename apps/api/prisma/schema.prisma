@@ -18,6 +18,7 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   sessions     Session[]
   workouts     WorkoutSession[]
+  customPlans  Plan[]           @relation("CustomPlanOwner")
 
   @@map("users")
 }
@@ -43,13 +44,19 @@ model Plan {
   difficulty       String
   estimatedMinutes Int              @map("estimated_minutes")
   daysPerWeek      Int              @map("days_per_week")
+  focus            String           @default("full_body")
+  isCustom         Boolean          @default(false) @map("is_custom")
+  ownerId          String?          @map("owner_id")
   isPublished      Boolean          @default(false) @map("is_published")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
   exercises        PlanExercise[]
   workouts         WorkoutSession[]
+  owner            User?            @relation("CustomPlanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([isPublished])
+  @@index([focus])
+  @@index([ownerId])
   @@map("plans")
 }
 
@@ -94,6 +101,7 @@ model WorkoutSession {
   userId          String                   @map("user_id")
   planId          String?                  @map("plan_id")
   planName        String?                  @map("plan_name_snapshot")
+  planDay         Int?                     @map("plan_day")
   performedAt     DateTime                 @map("performed_at")
   durationMinutes Int?                     @map("duration_minutes")
   notes           String?

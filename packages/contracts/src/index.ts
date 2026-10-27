@@ -24,6 +24,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UpdateProfileRequest {
+  displayName: string;
+}
+
 export interface AuthSession {
   user: Profile;
   accessToken: string;

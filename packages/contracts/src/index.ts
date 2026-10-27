@@ -2,6 +2,16 @@ export type Id = string;
 export type IsoDateTime = string;
 
 export type PlanDifficulty = "beginner" | "intermediate";
+export type PlanFocus =
+  | "full_body"
+  | "split"
+  | "strength"
+  | "chest"
+  | "shoulders"
+  | "back"
+  | "legs"
+  | "arms"
+  | "core";
 export type WorkoutSetType = "weight_reps" | "bodyweight" | "time";
 export type ClientSource = "web" | "miniapp" | "import";
 
@@ -24,6 +34,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UpdateProfileRequest {
+  displayName: string;
+}
+
 export interface AuthSession {
   user: Profile;
   accessToken: string;
@@ -36,8 +50,10 @@ export interface PlanSummary {
   slug: string;
   description: string;
   difficulty: PlanDifficulty;
+  focus: PlanFocus;
   estimatedMinutes: number;
   daysPerWeek: number;
+  isCustom?: boolean;
 }
 
 export interface ExerciseSummary {
@@ -87,6 +103,7 @@ export interface WorkoutSession {
   id: Id;
   planId?: Id;
   planName?: string;
+  planDay?: number;
   performedAt: IsoDateTime;
   durationMinutes?: number;
   notes?: string;
@@ -96,10 +113,24 @@ export interface WorkoutSession {
 
 export interface CreateWorkoutSessionRequest {
   planId?: Id;
+  planDay?: number;
   performedAt: IsoDateTime;
   durationMinutes?: number;
   notes?: string;
   exercises: WorkoutSessionExercise[];
+}
+
+export interface CustomPlanExerciseInput {
+  exerciseId: Id;
+  targetSets: number;
+  targetReps: number;
+}
+
+export interface CreateCustomPlanRequest {
+  name: string;
+  focus: Exclude<PlanFocus, "split" | "strength" | "full_body"> | "full_body";
+  estimatedMinutes: number;
+  exercises: CustomPlanExerciseInput[];
 }
 
 export interface WeeklyStats {

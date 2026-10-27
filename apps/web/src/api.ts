@@ -41,3 +41,21 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
   return (body as ApiSuccess<T> | undefined)?.data as T;
 }
+
+export async function downloadWorkoutExport(): Promise<void> {
+  const accessToken = getAccessToken();
+  const response = await fetch(apiBaseUrl + "/api/v1/workouts/export", {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+  });
+  if (!response.ok) throw new Error("训练记录导出失败");
+
+  const blob = await response.blob();
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = "fitplan-workouts.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(downloadUrl);
+}

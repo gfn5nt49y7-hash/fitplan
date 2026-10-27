@@ -3,6 +3,7 @@ import type {
   CreateCustomPlanRequest,
   CreateWorkoutSessionRequest,
   ExerciseSummary,
+  KinesiologyModule,
   LoginRequest,
   PlannedExercise,
   PlanSummary,
@@ -31,6 +32,7 @@ export interface AppStore {
   createCustomPlan(userId: string, input: CreateCustomPlanRequest): Promise<PlanDetail>;
   deleteCustomPlan(userId: string, planId: string): Promise<boolean>;
   getExercises(): Promise<ExerciseSummary[]>;
+  getKinesiologyModules(): Promise<KinesiologyModule[]>;
   listWorkouts(userId: string): Promise<WorkoutSession[]>;
   createWorkout(userId: string, input: CreateWorkoutSessionRequest): Promise<WorkoutSession>;
   updateWorkout(

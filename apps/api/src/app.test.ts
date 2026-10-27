@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
   ApiSuccess,
   AuthSession,
+  KinesiologyModule,
   PlannedExercise,
   PlanSummary,
   Profile,
@@ -109,6 +110,17 @@ describe("FitPlan API", function () {
       3,
       4
     ]);
+  });
+
+  it("returns the foundational kinesiology modules", async function () {
+    const response = await app.inject({ method: "GET", url: "/api/v1/kinesiology" });
+    expect(response.statusCode).toBe(200);
+    const modules = response.json<ApiSuccess<KinesiologyModule[]>>().data;
+    expect(modules).toHaveLength(6);
+    const shoulder = modules.find((module) => module.id === "shoulder");
+    expect(shoulder?.movements.map((movement) => movement.name)).toContain("肩屈");
+    expect(shoulder?.movements.map((movement) => movement.name)).toContain("肩伸");
+    expect(shoulder?.selectionLogic.length).toBeGreaterThan(2);
   });
 
   it("creates and deletes a workout record", async function () {

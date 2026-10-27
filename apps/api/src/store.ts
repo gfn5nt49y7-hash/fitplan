@@ -4,6 +4,7 @@ import type {
   CreateCustomPlanRequest,
   CreateWorkoutSessionRequest,
   ExerciseSummary,
+  KinesiologyModule,
   LoginRequest,
   PlannedExercise,
   PlanSummary,
@@ -13,6 +14,7 @@ import type {
   WeeklyStats,
   WorkoutSession
 } from "@fitplan/contracts";
+import { kinesiologyModules } from "./kinesiology.js";
 
 const exercises: ExerciseSummary[] = [
   {
@@ -21,6 +23,7 @@ const exercises: ExerciseSummary[] = [
     slug: "bodyweight-squat",
     muscleGroup: "腿部与臀部",
     equipment: "无器械",
+    movementTags: ["髋屈与伸", "膝屈与伸", "踝背屈"],
     instructions: "双脚与肩同宽，脚尖略微向外。向后坐髋并屈膝下蹲，保持膝盖与脚尖方向一致，再平稳站起。",
     safetyNotes: "保持背部中立，不要为了追求深度而失去平衡。出现膝部疼痛时立即停止。"
   },
@@ -30,6 +33,7 @@ const exercises: ExerciseSummary[] = [
     slug: "kneeling-pushup",
     muscleGroup: "胸部与手臂",
     equipment: "无器械",
+    movementTags: ["肩水平内收", "肘伸", "肩胛前伸"],
     instructions: "双膝着地，手掌略宽于肩，身体从头到膝保持一条直线。屈肘下降后推回起始位置。",
     safetyNotes: "避免塌腰和耸肩。如手腕不适，可使用俯卧撑支架或改为墙面俯卧撑。"
   },
@@ -39,6 +43,7 @@ const exercises: ExerciseSummary[] = [
     slug: "glute-bridge",
     muscleGroup: "臀部与后侧链",
     equipment: "无器械",
+    movementTags: ["髋伸", "膝稳定", "骨盆后倾"],
     instructions: "仰卧屈膝，双脚踩地。收紧臀部抬高髋部，在顶端短暂停留，再缓慢下降。",
     safetyNotes: "不要过度挺腰。主要发力应来自臀部，而不是下背部。"
   },
@@ -48,6 +53,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-bench-press",
     muscleGroup: "胸部与手臂",
     equipment: "哑铃与训练凳",
+    movementTags: ["肩水平内收", "肘伸", "肩胛后缩"],
     instructions: "肩胛骨向后下方收紧，将哑铃稳定下放至胸部两侧，再沿可控轨迹推起。",
     safetyNotes: "建议有人保护或使用安全架。不要盲目增加重量。"
   },
@@ -57,6 +63,7 @@ const exercises: ExerciseSummary[] = [
     slug: "seated-row",
     muscleGroup: "背部与手臂",
     equipment: "弹力带或器械",
+    movementTags: ["肩水平外展", "肘屈", "肩胛后缩"],
     instructions: "保持躯干稳定，将手柄拉向腹部，肩胛骨向后收拢，再缓慢伸直手臂。",
     safetyNotes: "避免耸肩和用身体后仰借力，保持动作可控。"
   },
@@ -66,6 +73,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-overhead-press",
     muscleGroup: "肩部与手臂",
     equipment: "哑铃",
+    movementTags: ["肩屈/外展", "肘伸", "肩胛上回旋"],
     instructions: "坐姿或站姿保持核心收紧，将哑铃从肩部两侧向上推至手臂接近伸直，再缓慢下降。",
     safetyNotes: "避免腰部过度后仰。肩部疼痛时停止动作并降低重量。"
   },
@@ -75,6 +83,7 @@ const exercises: ExerciseSummary[] = [
     slug: "lat-pulldown",
     muscleGroup: "背部与手臂",
     equipment: "器械",
+    movementTags: ["肩内收", "肘屈", "肩胛下回旋"],
     instructions: "坐稳并保持胸部抬起，将横杆拉向上胸部，肩胛骨向下收拢，再缓慢伸直手臂。",
     safetyNotes: "不要把横杆拉到颈后，也不要用身体大幅后仰借力。"
   },
@@ -84,6 +93,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-romanian-deadlift",
     muscleGroup: "臀部与后侧链",
     equipment: "哑铃",
+    movementTags: ["髋铰链", "髋伸", "膝微屈"],
     instructions: "双手持哑铃，膝盖微屈，向后推髋下放重量，感受大腿后侧拉伸后收紧臀部站起。",
     safetyNotes: "保持背部中立，重量贴近身体。腰部不适时立即停止。"
   },
@@ -93,6 +103,7 @@ const exercises: ExerciseSummary[] = [
     slug: "reverse-lunge",
     muscleGroup: "腿部与臀部",
     equipment: "无器械",
+    movementTags: ["髋屈与伸", "膝屈与伸", "踝稳定"],
     instructions: "一腿向后跨步并屈膝下沉，前脚掌稳定发力返回，左右腿交替完成。",
     safetyNotes: "保持膝盖与脚尖方向一致，可扶墙保持平衡。"
   },
@@ -102,6 +113,7 @@ const exercises: ExerciseSummary[] = [
     slug: "standing-calf-raise",
     muscleGroup: "小腿",
     equipment: "无器械",
+    movementTags: ["踝跖屈", "足踝稳定"],
     instructions: "站稳后缓慢踮起脚尖，在最高点停留，再控制脚跟下降。",
     safetyNotes: "可以扶墙保持平衡，避免快速弹跳。"
   },
@@ -111,6 +123,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-biceps-curl",
     muscleGroup: "手臂",
     equipment: "哑铃",
+    movementTags: ["肘屈", "前臂旋后"],
     instructions: "保持上臂贴近身体，屈肘举起哑铃并在顶端收紧，再缓慢下放。",
     safetyNotes: "避免摆动身体借力，手腕保持中立。"
   },
@@ -120,6 +133,7 @@ const exercises: ExerciseSummary[] = [
     slug: "triceps-pushdown",
     muscleGroup: "手臂",
     equipment: "器械",
+    movementTags: ["肘伸", "肩稳定"],
     instructions: "固定上臂位置，将绳索向下压至手臂伸直，再控制返回。",
     safetyNotes: "肘部保持贴近身体，不要用肩部推动重量。"
   },
@@ -129,6 +143,7 @@ const exercises: ExerciseSummary[] = [
     slug: "plank",
     muscleGroup: "核心",
     equipment: "无器械",
+    movementTags: ["躯干抗伸展", "肩胛稳定", "髋伸保持"],
     instructions: "前臂撑地，身体从头到脚保持直线，收紧腹部和臀部并保持自然呼吸。",
     safetyNotes: "不要塌腰或憋气，腰部不适时结束动作。"
   },
@@ -138,6 +153,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-chest-fly",
     muscleGroup: "胸部与手臂",
     equipment: "哑铃与训练凳",
+    movementTags: ["肩水平内收", "肘微屈保持"],
     instructions: "仰卧持哑铃，手肘微屈，将双臂沿弧线向两侧下放，再用胸部发力合拢。",
     safetyNotes: "使用可控重量，肩部不适时缩小活动范围或停止动作。"
   },
@@ -147,6 +163,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-lateral-raise",
     muscleGroup: "肩部与手臂",
     equipment: "哑铃",
+    movementTags: ["肩外展", "肩胛上回旋"],
     instructions: "身体站稳，手肘微屈，将哑铃向身体两侧抬至接近肩高，再缓慢下放。",
     safetyNotes: "避免耸肩和摆动借力，不需要刻意抬过肩部。"
   },
@@ -156,6 +173,7 @@ const exercises: ExerciseSummary[] = [
     slug: "cable-face-pull",
     muscleGroup: "肩部与背部",
     equipment: "器械",
+    movementTags: ["肩水平外展", "肩外旋", "肩胛后缩"],
     instructions: "将绳索拉向面部，手肘向外展开并收拢肩胛骨，再控制返回。",
     safetyNotes: "保持躯干稳定，使用轻到中等重量完成。"
   },
@@ -165,6 +183,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dumbbell-one-arm-row",
     muscleGroup: "背部与手臂",
     equipment: "哑铃",
+    movementTags: ["肩伸", "肘屈", "肩胛后缩"],
     instructions: "一手支撑训练凳，保持背部平直，将哑铃拉向髋部，再缓慢下放。",
     safetyNotes: "避免躯干旋转和耸肩，左右两侧分别完成。"
   },
@@ -174,6 +193,7 @@ const exercises: ExerciseSummary[] = [
     slug: "dead-bug",
     muscleGroup: "核心",
     equipment: "无器械",
+    movementTags: ["躯干抗伸展", "髋屈与伸", "呼吸控制"],
     instructions: "仰卧抬起双臂和双腿，保持腰部贴近地面，交替伸展对侧手臂与腿后返回。",
     safetyNotes: "动作过程中持续收紧腹部，不要憋气或过度挺腰。"
   }
@@ -563,6 +583,10 @@ function getExercises(): ExerciseSummary[] {
   return clone(exercises);
 }
 
+function getKinesiologyModules(): KinesiologyModule[] {
+  return clone(kinesiologyModules);
+}
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -785,6 +809,7 @@ export const mockStore = {
   createCustomPlan,
   deleteCustomPlan,
   getExercises,
+  getKinesiologyModules,
   listWorkouts,
   createWorkout,
   updateWorkout,

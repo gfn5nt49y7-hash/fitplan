@@ -15,6 +15,10 @@ const loginSchema = z.object({
   password: z.string().min(1).max(72)
 });
 
+const updateProfileSchema = z.object({
+  displayName: z.string().trim().min(2).max(40)
+});
+
 const workoutSetSchema = z
   .object({
     setNumber: z.number().int().min(1).max(30),
@@ -143,6 +147,37 @@ export function buildApp(options: FastifyServerOptions = {}) {
     return success(request.id, auth.user);
   });
 
+  app.patch("/api/v1/auth/me", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
+    }
+
+    const parsed = updateProfileSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send(failure("VALIDATION_ERROR", "昵称长度应为 2–40 个字符", request.id));
+    }
+
+    const profile = mockStore.updateProfile(auth.user.id, parsed.data);
+    if (!profile) {
+      return reply.status(404).send(failure("USER_NOT_FOUND", "用户不存在", request.id));
+    }
+    return success(request.id, profile);
+  });
+
+  app.delete("/api/v1/auth/me", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
+    }
+
+    const deleted = mockStore.deleteUser(auth.user.id);
+    if (!deleted) {
+      return reply.status(404).send(failure("USER_NOT_FOUND", "用户不存在", request.id));
+    }
+    return reply.status(204).send();
+  });
+
   app.get("/api/v1/me", async (request, reply) => {
     const auth = authenticate(request.headers.authorization);
     if (!auth) {
@@ -171,6 +206,41 @@ export function buildApp(options: FastifyServerOptions = {}) {
     return success(request.id, mockStore.listWorkouts(auth.user.id));
   });
 
+  app.get("/api/v1/workouts/export", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+
+    const rows = [
+      ["date", "plan", "exercise", "set", "type", "weight_kg", "reps", "duration_seconds"]
+    ];
+    for (const workout of mockStore.listWorkouts(auth.user.id)) {
+      for (const exercise of workout.exercises) {
+        for (const set of exercise.sets) {
+          rows.push([
+            workout.performedAt,
+            workout.planName ?? "",
+            exercise.exerciseName,
+            String(set.setNumber),
+            set.setType,
+            set.weightKg === undefined ? "" : String(set.weightKg),
+            set.reps === undefined ? "" : String(set.reps),
+            set.durationSeconds === undefined ? "" : String(set.durationSeconds)
+          ]);
+        }
+      }
+    }
+
+    const csv = rows
+      .map((row) => row.map((value) => '"' + value.replaceAll('"', '""') + '"').join(","))
+      .join("\r\n");
+    return reply
+      .header("content-type", "text/csv; charset=utf-8")
+      .header("content-disposition", 'attachment; filename="fitplan-workouts.csv"')
+      .send("\uFEFF" + csv);
+  });
+
   app.post("/api/v1/workouts", async (request, reply) => {
     const auth = authenticate(request.headers.authorization);
     if (!auth) {
@@ -195,6 +265,28 @@ export function buildApp(options: FastifyServerOptions = {}) {
 
     const workout = mockStore.createWorkout(auth.user.id, parsed.data);
     return reply.status(201).send(success(request.id, workout));
+  });
+
+  app.patch<{ Params: { workoutId: string } }>("/api/v1/workouts/:workoutId", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+
+    const parsed = createWorkoutSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send(failure("VALIDATION_ERROR", "训练记录格式不正确", request.id));
+    }
+
+    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId)) {
+      return reply.status(400).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
+    }
+
+    const workout = mockStore.updateWorkout(auth.user.id, request.params.workoutId, parsed.data);
+    if (!workout) {
+      return reply.status(404).send(failure("WORKOUT_NOT_FOUND", "训练记录不存在", request.id));
+    }
+    return success(request.id, workout);
   });
 
   app.delete<{ Params: { workoutId: string } }>("/api/v1/workouts/:workoutId", async (request, reply) => {

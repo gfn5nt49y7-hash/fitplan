@@ -8,6 +8,7 @@ import type {
   PlanSummary,
   Profile,
   RegisterRequest,
+  UpdateProfileRequest,
   WeeklyStats,
   WorkoutSession
 } from "@fitplan/contracts";
@@ -262,6 +263,25 @@ function deleteSession(token: string): void {
   sessions.delete(sessionKey(token));
 }
 
+function updateProfile(userId: string, input: UpdateProfileRequest): Profile | undefined {
+  const user = usersById.get(userId);
+  if (!user) return undefined;
+  user.displayName = input.displayName.trim();
+  return getProfile(userId);
+}
+
+function deleteUser(userId: string): boolean {
+  const user = usersById.get(userId);
+  if (!user) return false;
+  usersById.delete(userId);
+  usersByEmail.delete(user.email);
+  workoutsByUser.delete(userId);
+  for (const [tokenHash, session] of sessions) {
+    if (session.userId === userId) sessions.delete(tokenHash);
+  }
+  return true;
+}
+
 function listWorkouts(userId: string): WorkoutSession[] {
   return clone(workoutsByUser.get(userId) ?? []);
 }
@@ -286,6 +306,28 @@ function deleteWorkout(userId: string, workoutId: string): boolean {
   if (index < 0) return false;
   workouts.splice(index, 1);
   return true;
+}
+
+function updateWorkout(
+  userId: string,
+  workoutId: string,
+  input: CreateWorkoutSessionRequest
+): WorkoutSession | undefined {
+  const workouts = workoutsByUser.get(userId) ?? [];
+  const index = workouts.findIndex((workout) => workout.id === workoutId);
+  if (index < 0) return undefined;
+
+  const existing = workouts[index];
+  if (!existing) return undefined;
+  const plan = plans.find((item) => item.id === input.planId);
+  const updated: WorkoutSession = {
+    ...clone(input),
+    id: existing.id,
+    createdVia: existing.createdVia,
+    ...(plan ? { planName: plan.name } : {})
+  };
+  workouts[index] = updated;
+  return clone(updated);
 }
 
 function getWeeklyStats(userId: string): WeeklyStats {
@@ -346,11 +388,14 @@ export const mockStore = {
   getUserByToken,
   deleteSession,
   getProfile: (userId: string) => clone(getProfile(userId)),
+  updateProfile,
+  deleteUser,
   listPlans,
   getPlan,
   getExercises,
   listWorkouts,
   createWorkout,
+  updateWorkout,
   deleteWorkout,
   getWeeklyStats
 };

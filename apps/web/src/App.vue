@@ -14,6 +14,7 @@ import type {
   WorkoutSession
 } from "@fitplan/contracts";
 import AuthView from "./AuthView.vue";
+import MuscleAnatomy from "./MuscleAnatomy.vue";
 import { apiRequest, clearAccessToken, downloadWorkoutExport, getAccessToken } from "./api";
 
 interface PlanDetail {
@@ -28,12 +29,13 @@ interface DraftEntry {
   durationSeconds: number;
 }
 
-type AppPage = "plans" | "progress" | "library" | "records" | "profile";
+type AppPage = "plans" | "progress" | "library" | "anatomy" | "records" | "profile";
 
 const pageInfo: Record<AppPage, { label: string; title: string }> = {
   plans: { label: "训练计划", title: "训练计划" },
   progress: { label: "训练进度", title: "训练进度" },
   library: { label: "动作库", title: "动作库" },
+  anatomy: { label: "肌肉解剖", title: "肌肉解剖" },
   records: { label: "训练记录", title: "训练记录" },
   profile: { label: "账号设置", title: "账号设置" }
 };
@@ -653,6 +655,7 @@ onBeforeUnmount(function () {
         <a href="#/plans" :class="{ active: activePage === 'plans' }" :aria-current="activePage === 'plans' ? 'page' : undefined">训练计划</a>
         <a href="#/progress" :class="{ active: activePage === 'progress' }" :aria-current="activePage === 'progress' ? 'page' : undefined">训练进度</a>
         <a href="#/library" :class="{ active: activePage === 'library' }" :aria-current="activePage === 'library' ? 'page' : undefined">动作库</a>
+        <a href="#/anatomy" :class="{ active: activePage === 'anatomy' }" :aria-current="activePage === 'anatomy' ? 'page' : undefined">肌肉解剖</a>
         <a href="#/records" :class="{ active: activePage === 'records' }" :aria-current="activePage === 'records' ? 'page' : undefined">训练记录</a>
         <a href="#/profile" :class="{ active: activePage === 'profile' }" :aria-current="activePage === 'profile' ? 'page' : undefined">账号设置</a>
         <div class="user-area">
@@ -988,6 +991,10 @@ onBeforeUnmount(function () {
         <h3>没有找到匹配动作</h3>
         <p>尝试清空搜索词或切换筛选条件。</p>
       </div>
+    </section>
+
+    <section v-if="activePage === 'anatomy'" class="section anatomy-page">
+      <MuscleAnatomy />
     </section>
 
     <section v-if="activePage === 'plans' && selectedPlan" id="workout-panel" class="workout-panel">

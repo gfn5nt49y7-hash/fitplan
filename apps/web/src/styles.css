@@ -839,6 +839,211 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .progress-day.active .progress-bar { background: var(--green); }
 .progress-day.today .progress-bar { background: var(--green-dark); }
 
+.anatomy-page { padding-top: 48px; }
+.anatomy-module { width: 100%; }
+.anatomy-heading {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 60px;
+  align-items: end;
+  margin-bottom: 28px;
+}
+.anatomy-heading h2 {
+  margin: 0;
+  font-size: clamp(2.3rem, 4.5vw, 4rem);
+  line-height: 1.08;
+  letter-spacing: -.05em;
+}
+.anatomy-heading > p {
+  margin: 0 0 6px;
+  max-width: 430px;
+  color: var(--muted);
+}
+.anatomy-toolbar {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+.anatomy-toolbar > div {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #ecece2;
+}
+.anatomy-toolbar button {
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.anatomy-toolbar button.active {
+  background: var(--green-dark);
+  color: var(--green);
+}
+.anatomy-toolbar > span { color: var(--muted); font-size: .72rem; }
+.anatomy-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 16px;
+  align-items: stretch;
+}
+.anatomy-canvas {
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(183, 243, 74, .14), transparent 31%),
+    #fffefa;
+  box-shadow: var(--shadow);
+}
+.anatomy-canvas svg {
+  display: block;
+  width: 100%;
+  min-width: 590px;
+  height: auto;
+}
+.body-base ellipse,
+.body-base path {
+  fill: url(#bodyFill);
+  stroke: #c4bdb1;
+  stroke-width: 1.5;
+}
+.muscle-region { cursor: pointer; }
+.muscle-region path {
+  fill-opacity: .78;
+  stroke: rgba(31, 52, 38, .22);
+  stroke-width: 1.2;
+  transition: fill-opacity 160ms ease, stroke-width 160ms ease, filter 160ms ease;
+}
+.muscle-region:hover path { fill-opacity: .98; }
+.muscle-region.selected path {
+  fill-opacity: 1;
+  stroke: #173021;
+  stroke-width: 2.5;
+  filter: url(#muscleShadow);
+}
+.muscle-callout { cursor: pointer; }
+.muscle-callout line {
+  stroke: #8c978e;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+.muscle-callout circle { fill: #33483a; }
+.muscle-callout text {
+  fill: #344039;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+}
+.muscle-callout.selected line { stroke: var(--accent); stroke-width: 2; stroke-dasharray: none; }
+.muscle-callout.selected circle { fill: var(--accent); }
+.muscle-callout.selected text { fill: #a33f2a; font-size: 16px; }
+.muscle-info {
+  padding: 25px;
+  border-radius: 24px;
+  background: var(--green-dark);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.muscle-info-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.muscle-info-top span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 900;
+}
+.muscle-info-top small { color: rgba(255,255,255,.46); font-size: .65rem; }
+.muscle-info h3 {
+  margin: 28px 0 1px;
+  font-size: clamp(2rem, 3vw, 2.7rem);
+  line-height: 1.1;
+  letter-spacing: -.04em;
+}
+.muscle-english {
+  margin: 0 !important;
+  color: var(--green) !important;
+  font-size: .7rem !important;
+  letter-spacing: .03em;
+}
+.muscle-info > p {
+  margin: 22px 0 0;
+  color: rgba(255,255,255,.65);
+  font-size: .82rem;
+}
+.muscle-detail-block {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+.muscle-detail-block strong {
+  display: block;
+  margin-bottom: 9px;
+  color: rgba(255,255,255,.45);
+  font-size: .66rem;
+  letter-spacing: .08em;
+}
+.muscle-detail-block > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.muscle-detail-block span {
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.84);
+  font-size: .68rem;
+  font-weight: 700;
+}
+.muscle-legend {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.muscle-legend button {
+  padding: 7px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: .7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.muscle-legend button.active {
+  border-color: var(--green-dark);
+  background: #edf5df;
+  color: var(--ink);
+}
+.muscle-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.anatomy-note {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: .7rem;
+}
+
 .library-section { padding-top: 70px; }
 .kinesiology-panel {
   padding: clamp(22px, 4vw, 38px);
@@ -1068,6 +1273,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 
 @media (max-width: 900px) {
   .progress-summary { grid-template-columns: 1fr 1fr; }
+  .anatomy-heading { grid-template-columns: 1fr; gap: 14px; }
+  .anatomy-layout { grid-template-columns: 1fr; }
+  .muscle-info { min-height: 340px; }
   .kinesiology-heading { grid-template-columns: 1fr; gap: 14px; }
   .movement-grid { grid-template-columns: 1fr 1fr; }
   .kinesiology-logic { grid-template-columns: 1fr; }
@@ -1097,6 +1305,10 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .progress-summary { grid-template-columns: 1fr 1fr; }
   .progress-summary article { min-height: 100px; padding: 16px; }
   .progress-chart { gap: 7px; margin-top: 30px; }
+  .anatomy-toolbar { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .anatomy-toolbar > div { width: 100%; }
+  .anatomy-toolbar button { flex: 1; }
+  .anatomy-canvas { border-radius: 18px; }
   .kinesiology-panel { padding: 18px; border-radius: 22px; }
   .kinesiology-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
   .kinesiology-tabs button { white-space: nowrap; }

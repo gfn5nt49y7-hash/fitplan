@@ -238,7 +238,7 @@ function clearEditDraft() {
 
 function openEditWorkout(workout: WorkoutSession) {
   selectedPlan.value = null;
-  editingWorkout.value = structuredClone(workout);
+  editingWorkout.value = JSON.parse(JSON.stringify(workout)) as WorkoutSession;
   clearEditDraft();
   editingWorkout.value.exercises.forEach(function (exercise) {
     const firstSet = exercise.sets[0];

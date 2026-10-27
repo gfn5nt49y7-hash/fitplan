@@ -7,6 +7,7 @@ FitPlan 是一个面向健身初学者的轻量训练计划与训练记录网站
 - 按胸、肩、背、腿、手臂和核心筛选训练计划
 - 训练计划、训练进度、动作库、训练记录和账号设置使用独立页面
 - 动作库提供肩、肘、髋、膝、踝和躯干的运动学基础与动作选择逻辑
+- 人体肌肉解剖页面提供正反面可点击肌群、名称、功能和对应训练动作
 - 提供全身、上下肢分化、推拉腿、5×5 和居家训练等常见方案
 - 使用 DIY 表单创建、分类和删除自己的训练计划
 - 多训练日计划可切换上肢、下肢、推、拉、腿等训练内容
@@ -78,3 +79,9 @@ GitHub Actions 会在 develop 和 main 分支推送时执行以上检查。
 - API 自动测试、TypeScript 检查和生产构建
 
 PostgreSQL 的 Prisma 模型、初始迁移和种子数据已经准备好，但当前运行时仍默认使用内存存储。配置数据库后将切换为持久化存储。
+
+## 素材许可
+
+人体肌肉解剖插画基于 OpenStax、Tomáš Kebert 与 umimeto.org 的
+[Muscles front and back](https://commons.wikimedia.org/wiki/File:Muscles_front_and_back.svg)
+素材，依据 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用；FitPlan 对其进行了裁切并叠加中文训练标注。

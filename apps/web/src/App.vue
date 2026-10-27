@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import type {
   AuthSession,
   CreateWorkoutSessionRequest,
+  ExerciseSummary,
   PlannedExercise,
   PlanSummary,
   Profile,
@@ -24,6 +25,7 @@ interface DraftEntry {
 }
 
 const plans = ref<PlanSummary[]>([]);
+const exercises = ref<ExerciseSummary[]>([]);
 const workouts = ref<WorkoutSession[]>([]);
 const stats = ref<WeeklyStats | null>(null);
 const currentUser = ref<Profile | null>(null);
@@ -36,19 +38,91 @@ const profileSaving = ref(false);
 const error = ref("");
 const notice = ref("");
 const profileName = ref("");
+const exerciseQuery = ref("");
+const selectedMuscle = ref("全部");
+const selectedEquipment = ref("全部");
 const draft = reactive<Record<string, DraftEntry>>({});
 const editDraft = reactive<Record<string, DraftEntry>>({});
+
+const muscleGroups = computed(function () {
+  return ["全部"].concat(
+    Array.from(new Set(exercises.value.map((exercise) => exercise.muscleGroup))).sort()
+  );
+});
+
+const equipmentTypes = computed(function () {
+  return ["全部"].concat(
+    Array.from(new Set(exercises.value.map((exercise) => exercise.equipment))).sort()
+  );
+});
+
+const filteredExercises = computed(function () {
+  const query = exerciseQuery.value.trim().toLowerCase();
+  return exercises.value.filter(function (exercise) {
+    const matchesQuery =
+      !query ||
+      exercise.name.toLowerCase().includes(query) ||
+      exercise.muscleGroup.toLowerCase().includes(query) ||
+      exercise.instructions.toLowerCase().includes(query);
+    const matchesMuscle =
+      selectedMuscle.value === "全部" || exercise.muscleGroup === selectedMuscle.value;
+    const matchesEquipment =
+      selectedEquipment.value === "全部" || exercise.equipment === selectedEquipment.value;
+    return matchesQuery && matchesMuscle && matchesEquipment;
+  });
+});
+
+const progressDays = computed(function () {
+  const formatter = new Intl.DateTimeFormat("zh-CN", { weekday: "short" });
+  return Array.from({ length: 7 }, function (_, index) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - index));
+    const key = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0")
+    ].join("-");
+    const dayWorkouts = workouts.value.filter(function (workout) {
+      const performed = new Date(workout.performedAt);
+      const workoutKey = [
+        performed.getFullYear(),
+        String(performed.getMonth() + 1).padStart(2, "0"),
+        String(performed.getDate()).padStart(2, "0")
+      ].join("-");
+      return workoutKey === key;
+    });
+    const setCount = dayWorkouts.reduce(function (total, workout) {
+      return total + workout.exercises.reduce(function (inner, exercise) {
+        return inner + exercise.sets.length;
+      }, 0);
+    }, 0);
+    return {
+      key,
+      label: formatter.format(date),
+      isToday: index === 6,
+      workoutCount: dayWorkouts.length,
+      setCount
+    };
+  });
+});
+
+const maxDailySets = computed(function () {
+  return Math.max(1, ...progressDays.value.map((day) => day.setCount));
+});
 
 async function loadData() {
   loading.value = true;
   error.value = "";
   try {
-    const [planData, workoutData, weeklyData] = await Promise.all([
+    const [planData, exerciseData, workoutData, weeklyData] = await Promise.all([
       apiRequest<PlanSummary[]>("/api/v1/plans"),
+      apiRequest<ExerciseSummary[]>("/api/v1/exercises"),
       apiRequest<WorkoutSession[]>("/api/v1/workouts"),
       apiRequest<WeeklyStats>("/api/v1/stats/weekly")
     ]);
     plans.value = planData;
+    exercises.value = exerciseData;
     workouts.value = workoutData;
     stats.value = weeklyData;
   } catch (cause) {
@@ -95,6 +169,7 @@ async function logout() {
   clearAccessToken();
   currentUser.value = null;
   plans.value = [];
+  exercises.value = [];
   workouts.value = [];
   stats.value = null;
   selectedPlan.value = null;
@@ -134,6 +209,7 @@ async function deleteAccount() {
     clearAccessToken();
     currentUser.value = null;
     plans.value = [];
+    exercises.value = [];
     workouts.value = [];
     stats.value = null;
     selectedPlan.value = null;
@@ -344,6 +420,8 @@ onMounted(restoreSession);
       <a class="logo" href="#top">FitPlan<span>.</span></a>
       <nav aria-label="主导航">
         <a href="#plans">训练计划</a>
+        <a href="#progress">训练进度</a>
+        <a href="#library">动作库</a>
         <a href="#recent">训练记录</a>
         <a href="#profile">账号设置</a>
         <div class="user-area">
@@ -369,6 +447,41 @@ onMounted(restoreSession);
 
     <p v-if="error" class="alert" role="alert">{{ error }}</p>
 
+    <section id="progress" class="section progress-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">训练进度</p>
+          <h2>今天比昨天多做一点</h2>
+        </div>
+        <p>按近 7 天训练组数展示训练节奏，帮助发现停滞和恢复。</p>
+      </div>
+
+      <div class="progress-board">
+        <div class="progress-summary">
+          <article><span>本周训练</span><strong>{{ stats?.workoutCount ?? 0 }}</strong><small>次</small></article>
+          <article><span>本周总组数</span><strong>{{ stats?.totalSets ?? 0 }}</strong><small>组</small></article>
+          <article><span>训练时长</span><strong>{{ stats?.totalDurationMinutes ?? 0 }}</strong><small>分钟</small></article>
+          <article><span>连续训练</span><strong>{{ stats?.streakDays ?? 0 }}</strong><small>天</small></article>
+        </div>
+
+        <div class="progress-chart" aria-label="近七天训练组数">
+          <div
+            v-for="day in progressDays"
+            :key="day.key"
+            class="progress-day"
+            :class="{ today: day.isToday, active: day.setCount > 0 }"
+          >
+            <span class="bar-count">{{ day.setCount || "" }}</span>
+            <div
+              class="progress-bar"
+              :style="{ height: Math.max(8, Math.round((day.setCount / maxDailySets) * 140)) + 'px' }"
+            ></div>
+            <small>{{ day.label }}</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="plans" class="section">
       <div class="section-heading">
         <div>
@@ -391,6 +504,56 @@ onMounted(restoreSession);
           </ul>
           <button type="button" @click="choosePlan(plan.id)">开始这个计划</button>
         </article>
+      </div>
+    </section>
+
+    <section id="library" class="section library-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">动作库</p>
+          <h2>先理解动作，再增加重量</h2>
+        </div>
+        <p>按名称、训练部位和器械筛选动作，并阅读动作要领和安全提示。</p>
+      </div>
+
+      <div class="library-toolbar">
+        <label class="search-field">
+          <span>搜索动作</span>
+          <input v-model.trim="exerciseQuery" type="search" placeholder="例如：深蹲、背部、无器械" />
+        </label>
+        <label>
+          <span>训练部位</span>
+          <select v-model="selectedMuscle">
+            <option v-for="group in muscleGroups" :key="group" :value="group">{{ group }}</option>
+          </select>
+        </label>
+        <label>
+          <span>器械</span>
+          <select v-model="selectedEquipment">
+            <option v-for="equipment in equipmentTypes" :key="equipment" :value="equipment">
+              {{ equipment }}
+            </option>
+          </select>
+        </label>
+      </div>
+
+      <div v-if="filteredExercises.length" class="exercise-library-grid">
+        <article v-for="exercise in filteredExercises" :key="exercise.id" class="exercise-card">
+          <div class="exercise-tags">
+            <span>{{ exercise.muscleGroup }}</span>
+            <span>{{ exercise.equipment }}</span>
+          </div>
+          <h3>{{ exercise.name }}</h3>
+          <p>{{ exercise.instructions }}</p>
+          <div class="safety-note">
+            <strong>安全提示</strong>
+            <span>{{ exercise.safetyNotes }}</span>
+          </div>
+        </article>
+      </div>
+      <div v-else class="empty-card">
+        <h3>没有找到匹配动作</h3>
+        <p>尝试清空搜索词或切换筛选条件。</p>
       </div>
     </section>
 

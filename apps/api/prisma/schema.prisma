@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  displayName  String    @map("display_name")
+  passwordHash String    @map("password_hash")
+  passwordSalt String    @map("password_salt")
+  status       String    @default("active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  sessions     Session[]
+  workouts     WorkoutSession[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique @map("token_hash")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Plan {
+  id               String           @id @default(uuid())
+  name             String
+  slug             String           @unique
+  description      String
+  difficulty       String
+  estimatedMinutes Int              @map("estimated_minutes")
+  daysPerWeek      Int              @map("days_per_week")
+  isPublished      Boolean          @default(false) @map("is_published")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  exercises        PlanExercise[]
+  workouts         WorkoutSession[]
+
+  @@index([isPublished])
+  @@map("plans")
+}
+
+model Exercise {
+  id           String                     @id @default(uuid())
+  name         String
+  slug         String                     @unique
+  muscleGroup  String                     @map("muscle_group")
+  equipment    String
+  instructions String
+  safetyNotes  String                     @map("safety_notes")
+  mediaUrl     String?                    @map("media_url")
+  isPublished  Boolean                    @default(false) @map("is_published")
+  createdAt    DateTime                   @default(now()) @map("created_at")
+  updatedAt    DateTime                   @updatedAt @map("updated_at")
+  plans        PlanExercise[]
+  workoutItems WorkoutSessionExercise[]
+
+  @@index([isPublished])
+  @@map("exercises")
+}
+
+model PlanExercise {
+  id            String   @id @default(uuid())
+  planId        String   @map("plan_id")
+  exerciseId    String   @map("exercise_id")
+  dayNumber     Int      @map("day_number")
+  position      Int
+  targetSets    Int      @map("target_sets")
+  targetReps    Int?     @map("target_reps")
+  targetSeconds Int?     @map("target_seconds")
+  plan          Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  exercise      Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@unique([planId, dayNumber, position])
+  @@index([exerciseId])
+  @@map("plan_exercises")
+}
+
+model WorkoutSession {
+  id              String                   @id @default(uuid())
+  userId          String                   @map("user_id")
+  planId          String?                  @map("plan_id")
+  planName        String?                  @map("plan_name_snapshot")
+  performedAt     DateTime                 @map("performed_at")
+  durationMinutes Int?                     @map("duration_minutes")
+  notes           String?
+  createdVia      String                   @default("web") @map("created_via")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            Plan?                    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  exercises       WorkoutSessionExercise[]
+
+  @@index([userId, performedAt(sort: Desc)])
+  @@index([planId])
+  @@map("workout_sessions")
+}
+
+model WorkoutSessionExercise {
+  id                    String         @id @default(uuid())
+  sessionId             String         @map("session_id")
+  exerciseId            String?        @map("exercise_id")
+  exerciseNameSnapshot  String         @map("exercise_name_snapshot")
+  position              Int
+  targetSetsSnapshot    Int?           @map("target_sets_snapshot")
+  targetRepsSnapshot    Int?           @map("target_reps_snapshot")
+  targetSecondsSnapshot Int?           @map("target_seconds_snapshot")
+  notes                 String?
+  session               WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exercise              Exercise?      @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  sets                  WorkoutSet[]
+
+  @@unique([sessionId, position])
+  @@index([exerciseId])
+  @@map("workout_session_exercises")
+}
+
+model WorkoutSet {
+  id                String                 @id @default(uuid())
+  sessionExerciseId String                 @map("session_exercise_id")
+  setNumber         Int                    @map("set_number")
+  setType           String                 @map("set_type")
+  weightKg          Decimal?               @db.Decimal(6, 2) @map("weight_kg")
+  reps              Int?
+  durationSeconds   Int?                   @map("duration_seconds")
+  rpe               Decimal?               @db.Decimal(3, 1)
+  sessionExercise   WorkoutSessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionExerciseId, setNumber])
+  @@map("workout_sets")
+}

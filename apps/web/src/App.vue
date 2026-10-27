@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import type {
   AuthSession,
   CreateCustomPlanRequest,
@@ -27,11 +27,31 @@ interface DraftEntry {
   durationSeconds: number;
 }
 
+type AppPage = "plans" | "progress" | "library" | "records" | "profile";
+
+const pageInfo: Record<AppPage, { label: string; title: string }> = {
+  plans: { label: "训练计划", title: "训练计划" },
+  progress: { label: "训练进度", title: "训练进度" },
+  library: { label: "动作库", title: "动作库" },
+  records: { label: "训练记录", title: "训练记录" },
+  profile: { label: "账号设置", title: "账号设置" }
+};
+
+function pageFromHash(): AppPage {
+  const route = window.location.hash.replace(/^#\/?/, "").split(/[/?]/)[0];
+  return route && route in pageInfo ? route as AppPage : "plans";
+}
+
+function updateDocumentTitle(page: AppPage) {
+  document.title = pageInfo[page].title + " | FitPlan";
+}
+
 const plans = ref<PlanSummary[]>([]);
 const exercises = ref<ExerciseSummary[]>([]);
 const workouts = ref<WorkoutSession[]>([]);
 const stats = ref<WeeklyStats | null>(null);
 const currentUser = ref<Profile | null>(null);
+const activePage = ref<AppPage>(pageFromHash());
 const selectedPlan = ref<PlanDetail | null>(null);
 const activeDay = ref(1);
 const editingWorkout = ref<WorkoutSession | null>(null);
@@ -55,6 +75,10 @@ const customRows = ref([
 ]);
 const draft = reactive<Record<string, DraftEntry>>({});
 const editDraft = reactive<Record<string, DraftEntry>>({});
+
+const activePageInfo = computed(function () {
+  return pageInfo[activePage.value];
+});
 
 const muscleGroups = computed(function () {
   return ["全部"].concat(
@@ -568,7 +592,31 @@ function formatIndex(index: number) {
   return String(index + 1).padStart(2, "0");
 }
 
-onMounted(restoreSession);
+function syncPageFromHash() {
+  const nextPage = pageFromHash();
+  if (nextPage !== activePage.value) {
+    selectedPlan.value = null;
+    editingWorkout.value = null;
+  }
+  activePage.value = nextPage;
+  updateDocumentTitle(nextPage);
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+onMounted(function () {
+  const initialPage = pageFromHash();
+  activePage.value = initialPage;
+  if (window.location.hash !== "#/" + initialPage) {
+    window.history.replaceState(null, "", "#/" + initialPage);
+  }
+  updateDocumentTitle(initialPage);
+  window.addEventListener("hashchange", syncPageFromHash);
+  void restoreSession();
+});
+
+onBeforeUnmount(function () {
+  window.removeEventListener("hashchange", syncPageFromHash);
+});
 </script>
 
 <template>
@@ -581,13 +629,13 @@ onMounted(restoreSession);
 
   <template v-else>
     <header class="site-header">
-      <a class="logo" href="#top">FitPlan<span>.</span></a>
+      <a class="logo" href="#/plans">FitPlan<span>.</span></a>
       <nav aria-label="主导航">
-        <a href="#plans">训练计划</a>
-        <a href="#progress">训练进度</a>
-        <a href="#library">动作库</a>
-        <a href="#recent">训练记录</a>
-        <a href="#profile">账号设置</a>
+        <a href="#/plans" :class="{ active: activePage === 'plans' }" :aria-current="activePage === 'plans' ? 'page' : undefined">训练计划</a>
+        <a href="#/progress" :class="{ active: activePage === 'progress' }" :aria-current="activePage === 'progress' ? 'page' : undefined">训练进度</a>
+        <a href="#/library" :class="{ active: activePage === 'library' }" :aria-current="activePage === 'library' ? 'page' : undefined">动作库</a>
+        <a href="#/records" :class="{ active: activePage === 'records' }" :aria-current="activePage === 'records' ? 'page' : undefined">训练记录</a>
+        <a href="#/profile" :class="{ active: activePage === 'profile' }" :aria-current="activePage === 'profile' ? 'page' : undefined">账号设置</a>
         <div class="user-area">
           <span>{{ currentUser.displayName }}</span>
           <button type="button" @click="logout">退出</button>
@@ -595,12 +643,12 @@ onMounted(restoreSession);
       </nav>
     </header>
 
-    <main id="top">
-    <section class="hero">
+    <main :class="{ 'standalone-main': activePage !== 'plans' }">
+    <section v-if="activePage === 'plans'" class="hero">
       <p class="eyebrow">你的第一步，从一次训练开始</p>
       <h1>用清晰的计划，<br /><span>记录每一次进步。</span></h1>
       <p class="hero-copy">选择适合你的训练方案，记录重量、次数和组数，让训练成果有迹可循。</p>
-      <a class="primary-button" href="#plans">选择训练计划 <span>↓</span></a>
+      <a class="primary-button" href="#/plans">浏览训练计划 <span>↓</span></a>
 
       <div class="hero-metrics">
         <div><strong>{{ stats?.workoutCount ?? 0 }}</strong><span>本周训练</span></div>
@@ -609,9 +657,14 @@ onMounted(restoreSession);
       </div>
     </section>
 
+    <section v-if="activePage !== 'plans'" class="page-titlebar">
+      <p class="eyebrow">FitPlan 训练空间</p>
+      <h1>{{ activePageInfo.title }}</h1>
+    </section>
+
     <p v-if="error" class="alert" role="alert">{{ error }}</p>
 
-    <section id="progress" class="section progress-section">
+    <section v-if="activePage === 'progress'" class="section progress-section">
       <div class="section-heading">
         <div>
           <p class="eyebrow">训练进度</p>
@@ -646,7 +699,7 @@ onMounted(restoreSession);
       </div>
     </section>
 
-    <section id="plans" class="section">
+    <section v-if="activePage === 'plans'" class="section">
       <div class="section-heading plans-heading">
         <div class="heading-copy">
           <div>
@@ -788,7 +841,7 @@ onMounted(restoreSession);
       </section>
     </section>
 
-    <section id="library" class="section library-section">
+    <section v-if="activePage === 'library'" class="section library-section">
       <div class="section-heading">
         <div>
           <p class="eyebrow">动作库</p>
@@ -838,7 +891,7 @@ onMounted(restoreSession);
       </div>
     </section>
 
-    <section v-if="selectedPlan" id="workout-panel" class="workout-panel">
+    <section v-if="activePage === 'plans' && selectedPlan" id="workout-panel" class="workout-panel">
       <div class="workout-header">
         <div>
           <p class="eyebrow">今日训练</p>
@@ -884,7 +937,7 @@ onMounted(restoreSession);
       </form>
     </section>
 
-    <section v-if="editingWorkout" id="edit-workout-panel" class="workout-panel">
+    <section v-if="activePage === 'records' && editingWorkout" id="edit-workout-panel" class="workout-panel">
       <div class="workout-header">
         <div>
           <p class="eyebrow">编辑训练</p>
@@ -949,7 +1002,7 @@ onMounted(restoreSession);
       </form>
     </section>
 
-    <section id="recent" class="section recent">
+    <section v-if="activePage === 'records'" class="section recent">
       <div class="section-heading">
         <div><p class="eyebrow">训练记录</p><h2>最近的训练</h2></div>
         <p>记录由 API 返回，将来会保存到云端数据库中。</p>
@@ -983,7 +1036,7 @@ onMounted(restoreSession);
       </div>
     </section>
 
-    <section id="profile" class="section profile-section">
+    <section v-if="activePage === 'profile'" class="section profile-section">
       <div class="section-heading">
         <div><p class="eyebrow">账号与数据</p><h2>管理你的训练空间</h2></div>
         <p>昵称会显示在训练空间中。训练记录只能由当前账号访问。</p>
@@ -1022,7 +1075,7 @@ onMounted(restoreSession);
     <div v-if="notice" class="toast" role="status">{{ notice }}</div>
 
     <footer>
-      <a class="logo" href="#top">FitPlan<span>.</span></a>
+      <a class="logo" href="#/plans">FitPlan<span>.</span></a>
       <p>训练内容仅供一般健身参考，不替代医生或专业教练的建议。</p>
       <p>© 2026 FitPlan</p>
     </footer>

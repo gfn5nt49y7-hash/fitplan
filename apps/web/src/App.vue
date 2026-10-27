@@ -10,7 +10,7 @@ import type {
   WorkoutSession
 } from "@fitplan/contracts";
 import AuthView from "./AuthView.vue";
-import { apiRequest, clearAccessToken, getAccessToken } from "./api";
+import { apiRequest, clearAccessToken, downloadWorkoutExport, getAccessToken } from "./api";
 
 interface PlanDetail {
   plan: PlanSummary;
@@ -28,12 +28,16 @@ const workouts = ref<WorkoutSession[]>([]);
 const stats = ref<WeeklyStats | null>(null);
 const currentUser = ref<Profile | null>(null);
 const selectedPlan = ref<PlanDetail | null>(null);
+const editingWorkout = ref<WorkoutSession | null>(null);
 const loading = ref(true);
 const authLoading = ref(true);
 const saving = ref(false);
+const profileSaving = ref(false);
 const error = ref("");
 const notice = ref("");
+const profileName = ref("");
 const draft = reactive<Record<string, DraftEntry>>({});
+const editDraft = reactive<Record<string, DraftEntry>>({});
 
 async function loadData() {
   loading.value = true;
@@ -64,6 +68,7 @@ async function restoreSession() {
 
   try {
     currentUser.value = await apiRequest<Profile>("/api/v1/auth/me");
+    profileName.value = currentUser.value.displayName;
     await loadData();
   } catch (_cause) {
     clearAccessToken();
@@ -76,6 +81,7 @@ async function restoreSession() {
 
 async function handleAuthenticated(session: AuthSession) {
   currentUser.value = session.user;
+  profileName.value = session.user.displayName;
   authLoading.value = false;
   await loadData();
 }
@@ -92,6 +98,50 @@ async function logout() {
   workouts.value = [];
   stats.value = null;
   selectedPlan.value = null;
+  editingWorkout.value = null;
+}
+
+async function updateProfile() {
+  if (!currentUser.value) return;
+  profileSaving.value = true;
+  error.value = "";
+  try {
+    currentUser.value = await apiRequest<Profile>("/api/v1/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify({ displayName: profileName.value })
+    });
+    showNotice("昵称已更新");
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "昵称更新失败";
+  } finally {
+    profileSaving.value = false;
+  }
+}
+
+async function exportData() {
+  try {
+    await downloadWorkoutExport();
+    showNotice("训练记录已导出");
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "训练记录导出失败";
+  }
+}
+
+async function deleteAccount() {
+  if (!window.confirm("确定注销账号并删除全部训练记录吗？此操作不可恢复。")) return;
+  try {
+    await apiRequest<void>("/api/v1/auth/me", { method: "DELETE" });
+    clearAccessToken();
+    currentUser.value = null;
+    plans.value = [];
+    workouts.value = [];
+    stats.value = null;
+    selectedPlan.value = null;
+    editingWorkout.value = null;
+    showNotice("账号已注销");
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "账号注销失败";
+  }
 }
 
 async function choosePlan(planId: string) {
@@ -180,6 +230,85 @@ async function removeWorkout(workoutId: string) {
   }
 }
 
+function clearEditDraft() {
+  Object.keys(editDraft).forEach(function (key) {
+    delete editDraft[key];
+  });
+}
+
+function openEditWorkout(workout: WorkoutSession) {
+  selectedPlan.value = null;
+  editingWorkout.value = structuredClone(workout);
+  clearEditDraft();
+  editingWorkout.value.exercises.forEach(function (exercise) {
+    const firstSet = exercise.sets[0];
+    editDraft[exercise.id ?? String(exercise.position)] = {
+      weightKg: firstSet?.weightKg ?? 0,
+      reps: firstSet?.reps ?? 10,
+      sets: exercise.sets.length
+    };
+  });
+  window.setTimeout(function () {
+    document.querySelector("#edit-workout-panel")?.scrollIntoView({ behavior: "smooth" });
+  }, 30);
+}
+
+async function saveWorkoutEdit() {
+  if (!editingWorkout.value) return;
+  saving.value = true;
+  error.value = "";
+  try {
+    const exercises = editingWorkout.value.exercises.map(function (item) {
+      const key = item.id ?? String(item.position);
+      const entry = editDraft[key] ?? {
+        weightKg: item.sets[0]?.weightKg ?? 0,
+        reps: item.sets[0]?.reps ?? 10,
+        sets: item.sets.length
+      };
+      const setType = item.sets[0]?.setType ?? "weight_reps";
+      return {
+        exerciseId: item.exerciseId,
+        exerciseName: item.exerciseName,
+        position: item.position,
+        targetSets: item.targetSets,
+        targetReps: item.targetReps,
+        targetSeconds: item.targetSeconds,
+        notes: item.notes,
+        sets: Array.from({ length: entry.sets }, function (_, index) {
+          return {
+            setNumber: index + 1,
+            setType,
+            weightKg: setType === "bodyweight" ? undefined : entry.weightKg,
+            reps: entry.reps
+          };
+        })
+      };
+    });
+
+    const payload: CreateWorkoutSessionRequest = {
+      planId: editingWorkout.value.planId,
+      performedAt: editingWorkout.value.performedAt,
+      durationMinutes: editingWorkout.value.durationMinutes,
+      notes: editingWorkout.value.notes,
+      exercises
+    };
+    const updated = await apiRequest<WorkoutSession>(
+      "/api/v1/workouts/" + editingWorkout.value.id,
+      { method: "PATCH", body: JSON.stringify(payload) }
+    );
+    workouts.value = workouts.value.map(function (item) {
+      return item.id === updated.id ? updated : item;
+    });
+    stats.value = await apiRequest<WeeklyStats>("/api/v1/stats/weekly");
+    editingWorkout.value = null;
+    showNotice("训练记录已更新");
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "训练记录更新失败";
+  } finally {
+    saving.value = false;
+  }
+}
+
 function showNotice(message: string) {
   notice.value = message;
   window.setTimeout(function () {
@@ -216,6 +345,7 @@ onMounted(restoreSession);
       <nav aria-label="主导航">
         <a href="#plans">训练计划</a>
         <a href="#recent">训练记录</a>
+        <a href="#profile">账号设置</a>
         <div class="user-area">
           <span>{{ currentUser.displayName }}</span>
           <button type="button" @click="logout">退出</button>
@@ -288,6 +418,61 @@ onMounted(restoreSession);
       </form>
     </section>
 
+    <section v-if="editingWorkout" id="edit-workout-panel" class="workout-panel">
+      <div class="workout-header">
+        <div>
+          <p class="eyebrow">编辑训练</p>
+          <h2>{{ editingWorkout.planName ?? "自由训练" }}</h2>
+          <p>修改重量、次数和组数后重新保存。</p>
+        </div>
+        <button type="button" class="close-button" aria-label="关闭编辑表单" @click="editingWorkout = null">×</button>
+      </div>
+
+      <form @submit.prevent="saveWorkoutEdit">
+        <fieldset
+          v-for="(item, index) in editingWorkout.exercises"
+          :key="item.id ?? item.position"
+          class="exercise-fieldset"
+        >
+          <legend><span>0{{ index + 1 }}</span>{{ item.exerciseName }}</legend>
+          <div class="exercise-fields">
+            <label>
+              重量（kg）
+              <input
+                v-model.number="editDraft[item.id ?? String(item.position)].weightKg"
+                type="number"
+                min="0"
+                step="0.5"
+              />
+            </label>
+            <label>
+              每组次数
+              <input
+                v-model.number="editDraft[item.id ?? String(item.position)].reps"
+                type="number"
+                min="1"
+                max="1000"
+                required
+              />
+            </label>
+            <label>
+              组数
+              <input
+                v-model.number="editDraft[item.id ?? String(item.position)].sets"
+                type="number"
+                min="1"
+                max="30"
+                required
+              />
+            </label>
+          </div>
+        </fieldset>
+        <button class="save-button" type="submit" :disabled="saving">
+          {{ saving ? "正在保存…" : "保存修改" }}
+        </button>
+      </form>
+    </section>
+
     <section id="recent" class="section recent">
       <div class="section-heading">
         <div><p class="eyebrow">训练记录</p><h2>最近的训练</h2></div>
@@ -307,7 +492,10 @@ onMounted(restoreSession);
               <p class="eyebrow">{{ formatDate(workout.performedAt) }}</p>
               <h3>{{ workout.planName ?? "自由训练" }}</h3>
             </div>
-            <button type="button" class="delete-button" @click="removeWorkout(workout.id)">删除</button>
+            <div class="record-actions">
+              <button type="button" class="edit-button" @click="openEditWorkout(workout)">编辑</button>
+              <button type="button" class="delete-button" @click="removeWorkout(workout.id)">删除</button>
+            </div>
           </div>
           <ul>
             <li v-for="exercise in workout.exercises" :key="exercise.id ?? exercise.exerciseName">
@@ -316,6 +504,41 @@ onMounted(restoreSession);
             </li>
           </ul>
         </article>
+      </div>
+    </section>
+
+    <section id="profile" class="section profile-section">
+      <div class="section-heading">
+        <div><p class="eyebrow">账号与数据</p><h2>管理你的训练空间</h2></div>
+        <p>昵称会显示在训练空间中。训练记录只能由当前账号访问。</p>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-block">
+          <div>
+            <h3>个人资料</h3>
+            <p>{{ currentUser.email }}</p>
+          </div>
+          <form class="inline-form" @submit.prevent="updateProfile">
+            <label>
+              昵称
+              <input v-model.trim="profileName" type="text" minlength="2" maxlength="40" required />
+            </label>
+            <button type="submit" :disabled="profileSaving">
+              {{ profileSaving ? "保存中…" : "保存昵称" }}
+            </button>
+          </form>
+        </div>
+
+        <div class="settings-block">
+          <div><h3>导出训练记录</h3><p>下载当前账号全部训练组数据为 CSV。</p></div>
+          <button class="secondary-button" type="button" @click="exportData">导出 CSV</button>
+        </div>
+
+        <div class="settings-block danger-block">
+          <div><h3>注销账号</h3><p>永久删除当前账号和全部训练记录。</p></div>
+          <button class="danger-button" type="button" @click="deleteAccount">注销账号</button>
+        </div>
       </div>
     </section>
     </main>

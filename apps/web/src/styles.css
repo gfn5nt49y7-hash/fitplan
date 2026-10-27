@@ -286,10 +286,58 @@ main { overflow: hidden; }
 .record-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .record-heading .eyebrow { margin-bottom: 4px; color: var(--muted); }
 .record-heading h3 { margin: 0; font-size: 1.45rem; }
-.delete-button { border: 0; background: transparent; color: #a54631; font-size: .76rem; font-weight: 800; cursor: pointer; }
+.record-actions { display: flex; align-items: center; gap: 12px; }
+.edit-button,
+.delete-button { border: 0; background: transparent; font-size: .76rem; font-weight: 800; cursor: pointer; }
+.edit-button { color: var(--green-dark); }
+.delete-button { color: #a54631; }
 .record-card ul { margin: 18px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); list-style: none; }
 .record-card li { display: flex; justify-content: space-between; gap: 20px; padding: 6px 0; }
 .record-card li span { color: var(--muted); }
+
+.profile-section { padding-top: 16px; }
+.settings-card {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--line);
+}
+.settings-block {
+  min-height: 116px;
+  padding: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  background: var(--card);
+}
+.settings-block h3 { margin: 0 0 5px; font-size: 1.1rem; }
+.settings-block p { margin: 0; color: var(--muted); font-size: .82rem; }
+.inline-form { display: flex; align-items: end; gap: 10px; }
+.inline-form label { display: grid; gap: 5px; color: var(--muted); font-size: .72rem; font-weight: 800; }
+.inline-form input {
+  width: 210px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+}
+.inline-form button,
+.secondary-button,
+.danger-button {
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: .76rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inline-form button { border: 0; background: var(--green-dark); color: #fff; }
+.secondary-button { border: 1px solid var(--green-dark); background: transparent; color: var(--green-dark); }
+.danger-button { border: 1px solid #e2b6ad; background: #fff4f1; color: #9d321e; }
+.danger-block { background: #fffdfa; }
 
 .toast {
   position: fixed;
@@ -342,6 +390,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .plan-card { min-height: 380px; padding: 24px; }
   .workout-panel { margin-top: -20px; }
   .recent { padding-bottom: 80px; }
+  .settings-block { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .inline-form { width: 100%; align-items: stretch; flex-direction: column; }
+  .inline-form input { width: 100%; }
   footer { grid-template-columns: 1fr; gap: 16px; }
 }
 

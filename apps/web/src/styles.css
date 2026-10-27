@@ -840,6 +840,173 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .progress-day.today .progress-bar { background: var(--green-dark); }
 
 .library-section { padding-top: 70px; }
+.kinesiology-panel {
+  padding: clamp(22px, 4vw, 38px);
+  border-radius: 28px;
+  background: var(--green-dark);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.kinesiology-heading {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 44px;
+  align-items: end;
+}
+.kinesiology-heading .eyebrow { color: var(--green); }
+.kinesiology-heading h3 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.3vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -.045em;
+}
+.kinesiology-heading > p {
+  margin: 0 0 5px;
+  color: rgba(255,255,255,.6);
+  font-size: .86rem;
+}
+.kinesiology-tabs {
+  margin: 28px 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kinesiology-tabs button {
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,.17);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,.72);
+  font-size: .72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.kinesiology-tabs button.active {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--ink);
+}
+.kinesiology-card {
+  padding: clamp(20px, 3vw, 30px);
+  border-radius: 20px;
+  background: #fbfaf5;
+  color: var(--ink);
+}
+.kinesiology-intro {
+  max-width: 880px;
+}
+.kinesiology-intro .eyebrow { margin-bottom: 8px; }
+.kinesiology-intro h4 {
+  margin: 0 0 12px;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  line-height: 1.1;
+}
+.kinesiology-intro > p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: .88rem;
+}
+.function-note {
+  margin-top: 17px;
+  padding: 13px 15px;
+  display: grid;
+  gap: 4px;
+  border-left: 4px solid var(--green);
+  background: #eef5e4;
+  font-size: .8rem;
+}
+.function-note strong { font-size: .68rem; letter-spacing: .08em; color: #426027; }
+.function-note span { color: #344038; }
+.movement-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.movement-card {
+  min-height: 185px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fff;
+}
+.movement-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.movement-heading h5 { margin: 0; font-size: 1.12rem; line-height: 1.2; }
+.movement-heading span {
+  display: block;
+  margin-top: 3px;
+  color: #9aa39c;
+  font-size: .64rem;
+  letter-spacing: .03em;
+}
+.movement-heading b {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #edf5df;
+  color: #426027;
+  font-size: .62rem;
+}
+.movement-card > p {
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: .76rem;
+}
+.movement-examples {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.movement-examples span {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #f2f2eb;
+  color: #59635c;
+  font-size: .62rem;
+  font-weight: 700;
+}
+.kinesiology-logic {
+  margin-top: 20px;
+  padding-top: 20px;
+  display: grid;
+  grid-template-columns: 1.45fr .55fr;
+  gap: 24px;
+  border-top: 1px solid var(--line);
+}
+.kinesiology-logic .eyebrow { margin-bottom: 9px; }
+.kinesiology-logic ul { margin: 0; padding-left: 20px; }
+.kinesiology-logic li {
+  margin: 7px 0;
+  color: #48544c;
+  font-size: .8rem;
+}
+.kinesiology-logic aside {
+  padding: 16px;
+  border-radius: 13px;
+  background: #fff0ed;
+  color: #74392b;
+  font-size: .76rem;
+}
+.kinesiology-logic aside strong { display: block; margin-bottom: 5px; font-size: .7rem; }
+.kinesiology-logic aside p { margin: 0; }
+.library-heading {
+  margin: 42px 0 18px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 30px;
+}
+.library-heading .eyebrow { margin-bottom: 7px; }
+.library-heading h3 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.3rem); }
+.library-heading > p { margin: 0; max-width: 390px; color: var(--muted); font-size: .78rem; }
 .library-toolbar {
   margin-bottom: 24px;
   padding: 18px;
@@ -877,6 +1044,15 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   font-size: .66rem;
   font-weight: 800;
 }
+.movement-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.movement-tags span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #f2f2eb;
+  color: #59635c;
+  font-size: .64rem;
+  font-weight: 700;
+}
 .exercise-card h3 { margin: 24px 0 9px; font-size: 1.35rem; }
 .exercise-card > p { margin: 0; color: var(--muted); font-size: .82rem; }
 .safety-note {
@@ -892,6 +1068,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 
 @media (max-width: 900px) {
   .progress-summary { grid-template-columns: 1fr 1fr; }
+  .kinesiology-heading { grid-template-columns: 1fr; gap: 14px; }
+  .movement-grid { grid-template-columns: 1fr 1fr; }
+  .kinesiology-logic { grid-template-columns: 1fr; }
   .library-toolbar { grid-template-columns: 1fr 1fr; }
   .search-field { grid-column: 1 / -1; }
   .exercise-library-grid { grid-template-columns: 1fr 1fr; }
@@ -918,6 +1097,11 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .progress-summary { grid-template-columns: 1fr 1fr; }
   .progress-summary article { min-height: 100px; padding: 16px; }
   .progress-chart { gap: 7px; margin-top: 30px; }
+  .kinesiology-panel { padding: 18px; border-radius: 22px; }
+  .kinesiology-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
+  .kinesiology-tabs button { white-space: nowrap; }
+  .movement-grid { grid-template-columns: 1fr; }
+  .library-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .library-toolbar { grid-template-columns: 1fr; }
   .search-field { grid-column: auto; }
   .exercise-library-grid { grid-template-columns: 1fr; }

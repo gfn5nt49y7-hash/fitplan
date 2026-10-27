@@ -58,10 +58,27 @@ const workoutSessionExerciseSchema = z.object({
 
 const createWorkoutSchema = z.object({
   planId: z.string().min(1).optional(),
+  planDay: z.number().int().min(1).max(14).optional(),
   performedAt: z.string().datetime({ offset: true }),
   durationMinutes: z.number().int().min(1).max(1440).optional(),
   notes: z.string().max(500).optional(),
   exercises: z.array(workoutSessionExerciseSchema).min(1).max(50)
+});
+
+const createCustomPlanSchema = z.object({
+  name: z.string().trim().min(2).max(40),
+  focus: z.enum(["full_body", "chest", "shoulders", "back", "legs", "arms", "core"]),
+  estimatedMinutes: z.number().int().min(5).max(240),
+  exercises: z
+    .array(
+      z.object({
+        exerciseId: z.string().min(1),
+        targetSets: z.number().int().min(1).max(20),
+        targetReps: z.number().int().min(1).max(100)
+      })
+    )
+    .min(1)
+    .max(20)
 });
 
 function success<T>(requestId: string, data: T): ApiSuccess<T> {
@@ -186,14 +203,43 @@ export function buildApp(options: FastifyServerOptions = {}) {
     return success(request.id, auth.user);
   });
 
-  app.get("/api/v1/plans", async (request) => success(request.id, mockStore.listPlans()));
+  app.get("/api/v1/plans", async (request) => {
+    const auth = authenticate(request.headers.authorization);
+    return success(request.id, mockStore.listPlans(auth?.user.id));
+  });
 
   app.get<{ Params: { planId: string } }>("/api/v1/plans/:planId", async (request, reply) => {
-    const plan = mockStore.getPlan(request.params.planId);
+    const auth = authenticate(request.headers.authorization);
+    const plan = mockStore.getPlan(request.params.planId, auth?.user.id);
     if (!plan) {
       return reply.status(404).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
     return success(request.id, plan);
+  });
+
+  app.post("/api/v1/plans", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+    const parsed = createCustomPlanSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send(failure("VALIDATION_ERROR", "自定义计划格式不正确", request.id));
+    }
+    const plan = mockStore.createCustomPlan(auth.user.id, parsed.data);
+    return reply.status(201).send(success(request.id, plan));
+  });
+
+  app.delete<{ Params: { planId: string } }>("/api/v1/plans/:planId", async (request, reply) => {
+    const auth = authenticate(request.headers.authorization);
+    if (!auth) {
+      return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
+    }
+    const deleted = mockStore.deleteCustomPlan(auth.user.id, request.params.planId);
+    if (!deleted) {
+      return reply.status(404).send(failure("PLAN_NOT_FOUND", "自定义计划不存在", request.id));
+    }
+    return reply.status(204).send();
   });
 
   app.get("/api/v1/exercises", async (request) => success(request.id, mockStore.getExercises()));
@@ -259,7 +305,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
       } satisfies ApiError);
     }
 
-    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId)) {
+    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId, auth.user.id)) {
       return reply.status(400).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
 
@@ -278,7 +324,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
       return reply.status(400).send(failure("VALIDATION_ERROR", "训练记录格式不正确", request.id));
     }
 
-    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId)) {
+    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId, auth.user.id)) {
       return reply.status(400).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
 

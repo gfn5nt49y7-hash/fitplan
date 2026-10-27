@@ -1,5 +1,6 @@
 import type {
   AuthSession,
+  CreateCustomPlanRequest,
   CreateWorkoutSessionRequest,
   ExerciseSummary,
   LoginRequest,
@@ -25,8 +26,10 @@ export interface AppStore {
   getProfile(userId: string): Promise<Profile | undefined>;
   updateProfile(userId: string, input: UpdateProfileRequest): Promise<Profile | undefined>;
   deleteUser(userId: string): Promise<boolean>;
-  listPlans(): Promise<PlanSummary[]>;
-  getPlan(planId: string): Promise<PlanDetail | undefined>;
+  listPlans(userId?: string): Promise<PlanSummary[]>;
+  getPlan(planId: string, userId?: string): Promise<PlanDetail | undefined>;
+  createCustomPlan(userId: string, input: CreateCustomPlanRequest): Promise<PlanDetail>;
+  deleteCustomPlan(userId: string, planId: string): Promise<boolean>;
   getExercises(): Promise<ExerciseSummary[]>;
   listWorkouts(userId: string): Promise<WorkoutSession[]>;
   createWorkout(userId: string, input: CreateWorkoutSessionRequest): Promise<WorkoutSession>;

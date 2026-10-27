@@ -15,6 +15,7 @@ import type {
 } from "@fitplan/contracts";
 import AuthView from "./AuthView.vue";
 import MuscleAnatomy from "./MuscleAnatomy.vue";
+import TrainingLogic from "./TrainingLogic.vue";
 import { apiRequest, clearAccessToken, downloadWorkoutExport, getAccessToken } from "./api";
 
 interface PlanDetail {
@@ -734,6 +735,8 @@ onBeforeUnmount(function () {
         </div>
         <p>参考常见全身、分化与力量计划，也可以按胸、肩、背、腿、手臂和核心筛选。</p>
       </div>
+
+      <TrainingLogic />
 
       <div class="plan-categories" role="tablist" aria-label="按训练部位筛选计划">
         <button

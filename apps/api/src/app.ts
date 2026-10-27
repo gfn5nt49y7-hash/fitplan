@@ -244,6 +244,10 @@ export function buildApp(options: FastifyServerOptions = {}) {
 
   app.get("/api/v1/exercises", async (request) => success(request.id, mockStore.getExercises()));
 
+  app.get("/api/v1/kinesiology", async (request) =>
+    success(request.id, mockStore.getKinesiologyModules())
+  );
+
   app.get("/api/v1/workouts", async (request, reply) => {
     const auth = authenticate(request.headers.authorization);
     if (!auth) {

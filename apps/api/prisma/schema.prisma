@@ -66,6 +66,7 @@ model Exercise {
   slug         String                     @unique
   muscleGroup  String                     @map("muscle_group")
   equipment    String
+  movementTags String[]                   @default([]) @map("movement_tags")
   instructions String
   safetyNotes  String                     @map("safety_notes")
   mediaUrl     String?                    @map("media_url")

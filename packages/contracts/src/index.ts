@@ -62,9 +62,30 @@ export interface ExerciseSummary {
   slug: string;
   muscleGroup: string;
   equipment: string;
+  movementTags: string[];
   instructions: string;
   safetyNotes: string;
   mediaUrl?: string;
+}
+
+export interface KinesiologyMovement {
+  id: string;
+  name: string;
+  englishName: string;
+  plane: string;
+  description: string;
+  exerciseExamples: string[];
+}
+
+export interface KinesiologyModule {
+  id: "shoulder" | "elbow" | "hip" | "knee" | "ankle" | "trunk";
+  title: string;
+  subtitle: string;
+  summary: string;
+  keyFunction: string;
+  movements: KinesiologyMovement[];
+  selectionLogic: string[];
+  safetyNotes: string;
 }
 
 export interface PlannedExercise {

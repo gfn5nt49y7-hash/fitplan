@@ -5,6 +5,7 @@ import type {
   CreateCustomPlanRequest,
   CreateWorkoutSessionRequest,
   ExerciseSummary,
+  KinesiologyModule,
   PlannedExercise,
   PlanFocus,
   PlanSummary,
@@ -48,6 +49,8 @@ function updateDocumentTitle(page: AppPage) {
 
 const plans = ref<PlanSummary[]>([]);
 const exercises = ref<ExerciseSummary[]>([]);
+const kinesiologyModules = ref<KinesiologyModule[]>([]);
+const activeKinesiologyId = ref<KinesiologyModule["id"]>("shoulder");
 const workouts = ref<WorkoutSession[]>([]);
 const stats = ref<WeeklyStats | null>(null);
 const currentUser = ref<Profile | null>(null);
@@ -89,6 +92,14 @@ const muscleGroups = computed(function () {
 const equipmentTypes = computed(function () {
   return ["全部"].concat(
     Array.from(new Set(exercises.value.map((exercise) => exercise.equipment))).sort()
+  );
+});
+
+const activeKinesiologyModule = computed(function () {
+  return (
+    kinesiologyModules.value.find((module) => module.id === activeKinesiologyId.value) ??
+    kinesiologyModules.value[0] ??
+    null
   );
 });
 
@@ -189,14 +200,20 @@ async function loadData() {
   loading.value = true;
   error.value = "";
   try {
-    const [planData, exerciseData, workoutData, weeklyData] = await Promise.all([
+    const [planData, exerciseData, kinesiologyData, workoutData, weeklyData] = await Promise.all([
       apiRequest<PlanSummary[]>("/api/v1/plans"),
       apiRequest<ExerciseSummary[]>("/api/v1/exercises"),
+      apiRequest<KinesiologyModule[]>("/api/v1/kinesiology"),
       apiRequest<WorkoutSession[]>("/api/v1/workouts"),
       apiRequest<WeeklyStats>("/api/v1/stats/weekly")
     ]);
     plans.value = planData;
     exercises.value = exerciseData;
+    kinesiologyModules.value = kinesiologyData;
+    activeKinesiologyId.value =
+      kinesiologyData.find((module) => module.id === activeKinesiologyId.value)?.id ??
+      kinesiologyData[0]?.id ??
+      "shoulder";
     workouts.value = workoutData;
     stats.value = weeklyData;
   } catch (cause) {
@@ -244,6 +261,7 @@ async function logout() {
   currentUser.value = null;
   plans.value = [];
   exercises.value = [];
+  kinesiologyModules.value = [];
   workouts.value = [];
   stats.value = null;
   selectedPlan.value = null;
@@ -284,6 +302,7 @@ async function deleteAccount() {
     currentUser.value = null;
     plans.value = [];
     exercises.value = [];
+    kinesiologyModules.value = [];
     workouts.value = [];
     stats.value = null;
     selectedPlan.value = null;
@@ -845,9 +864,86 @@ onBeforeUnmount(function () {
       <div class="section-heading">
         <div>
           <p class="eyebrow">动作库</p>
-          <h2>先理解动作，再增加重量</h2>
+          <h2>先理解关节，再选择动作</h2>
         </div>
-        <p>按名称、训练部位和器械筛选动作，并阅读动作要领和安全提示。</p>
+        <p>从关节动作和运动方向出发，理解每个动作为什么存在，再按部位与器械查找动作。</p>
+      </div>
+
+      <div v-if="activeKinesiologyModule" class="kinesiology-panel">
+        <div class="kinesiology-heading">
+          <div>
+            <p class="eyebrow">运动学基础</p>
+            <h3>身体怎么动，决定动作怎么选</h3>
+          </div>
+          <p>关节动作是“功能”，肌肉是执行者。先确定要训练的动作方向，再比较不同器械和动作。</p>
+        </div>
+
+        <div class="kinesiology-tabs" role="tablist" aria-label="选择身体部位">
+          <button
+            v-for="module in kinesiologyModules"
+            :key="module.id"
+            type="button"
+            role="tab"
+            :aria-selected="activeKinesiologyId === module.id"
+            :class="{ active: activeKinesiologyId === module.id }"
+            @click="activeKinesiologyId = module.id"
+          >
+            {{ module.title }}
+          </button>
+        </div>
+
+        <article class="kinesiology-card">
+          <div class="kinesiology-intro">
+            <p class="eyebrow">{{ activeKinesiologyModule.subtitle }}</p>
+            <h4>{{ activeKinesiologyModule.title }}</h4>
+            <p>{{ activeKinesiologyModule.summary }}</p>
+            <div class="function-note">
+              <strong>主要功能</strong>
+              <span>{{ activeKinesiologyModule.keyFunction }}</span>
+            </div>
+          </div>
+
+          <div class="movement-grid">
+            <div
+              v-for="movement in activeKinesiologyModule.movements"
+              :key="movement.id"
+              class="movement-card"
+            >
+              <div class="movement-heading">
+                <div>
+                  <h5>{{ movement.name }}</h5>
+                  <span>{{ movement.englishName }}</span>
+                </div>
+                <b>{{ movement.plane }}</b>
+              </div>
+              <p>{{ movement.description }}</p>
+              <div class="movement-examples">
+                <span v-for="example in movement.exerciseExamples" :key="example">{{ example }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="kinesiology-logic">
+            <section>
+              <p class="eyebrow">动作选择逻辑</p>
+              <ul>
+                <li v-for="item in activeKinesiologyModule.selectionLogic" :key="item">{{ item }}</li>
+              </ul>
+            </section>
+            <aside>
+              <strong>安全与边界</strong>
+              <p>{{ activeKinesiologyModule.safetyNotes }}</p>
+            </aside>
+          </div>
+        </article>
+      </div>
+
+      <div class="library-heading">
+        <div>
+          <p class="eyebrow">动作索引</p>
+          <h3>按名称、部位和器械查找</h3>
+        </div>
+        <p>每张动作卡都标出了主要关节动作，便于把动作放回运动学逻辑中。</p>
       </div>
 
       <div class="library-toolbar">
@@ -878,6 +974,9 @@ onBeforeUnmount(function () {
             <span>{{ exercise.equipment }}</span>
           </div>
           <h3>{{ exercise.name }}</h3>
+          <div class="movement-tags">
+            <span v-for="tag in exercise.movementTags" :key="tag">{{ tag }}</span>
+          </div>
           <p>{{ exercise.instructions }}</p>
           <div class="safety-note">
             <strong>安全提示</strong>

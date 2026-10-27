@@ -79,3 +79,9 @@ GitHub Actions 会在 develop 和 main 分支推送时执行以上检查。
 - API 自动测试、TypeScript 检查和生产构建
 
 PostgreSQL 的 Prisma 模型、初始迁移和种子数据已经准备好，但当前运行时仍默认使用内存存储。配置数据库后将切换为持久化存储。
+
+## 素材许可
+
+人体肌肉解剖插画基于 OpenStax、Tomáš Kebert 与 umimeto.org 的
+[Muscles front and back](https://commons.wikimedia.org/wiki/File:Muscles_front_and_back.svg)
+素材，依据 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 使用；FitPlan 对其进行了裁切并叠加中文训练标注。

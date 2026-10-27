@@ -42,12 +42,25 @@ button { -webkit-tap-highlight-color: transparent; }
 .logo span { color: var(--accent); }
 .site-header nav { display: flex; align-items: center; gap: 28px; }
 .site-header nav a {
+  position: relative;
+  padding: 8px 0;
   color: var(--muted);
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 700;
 }
 .site-header nav a:hover { color: var(--ink); }
+.site-header nav a.active { color: var(--ink); }
+.site-header nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--green);
+}
 .api-state {
   padding: 5px 10px;
   border-radius: 999px;
@@ -126,6 +139,24 @@ main { overflow: hidden; }
 .hero-metrics div { display: grid; gap: 1px; }
 .hero-metrics strong { font-size: 1.8rem; line-height: 1; }
 .hero-metrics span { color: rgba(255, 255, 255, 0.48); font-size: 0.72rem; }
+.page-titlebar {
+  width: min(1180px, calc(100% - 48px));
+  margin: 34px auto 0;
+  padding: 38px clamp(24px, 5vw, 58px);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(183, 243, 74, .5), transparent 22%),
+    var(--green-dark);
+  color: #fff;
+}
+.page-titlebar .eyebrow { margin-bottom: 9px; color: var(--green); }
+.page-titlebar h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: -.055em;
+}
+.standalone-main .section { padding-top: 48px; }
 
 .alert {
   width: min(1180px, calc(100% - 48px));
@@ -548,11 +579,12 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   footer p:last-child { grid-column: 1 / -1; text-align: left; }
 }
 @media (max-width: 620px) {
-  .site-header, .hero, .section, .workout-panel, footer, .alert { width: calc(100% - 32px); }
+  .site-header, .hero, .section, .workout-panel, .page-titlebar, footer, .alert { width: calc(100% - 32px); }
   .site-header { height: 72px; }
   .site-header nav { gap: 14px; }
   .api-state { display: none; }
   .hero { padding: 62px 23px 44px; border-radius: 24px; }
+  .page-titlebar { margin-top: 22px; padding: 30px 24px; border-radius: 22px; }
   .hero h1 { font-size: clamp(2.65rem, 14vw, 4.2rem); }
   .hero-metrics { gap: 24px; margin-top: 46px; }
   .hero-metrics strong { font-size: 1.35rem; }
@@ -866,8 +898,23 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 }
 
 @media (max-width: 620px) {
-  .site-header nav a:nth-of-type(2),
-  .site-header nav a:nth-of-type(3) { display: none; }
+  .site-header {
+    height: auto;
+    padding: 16px 0 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .site-header nav {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 18px;
+    padding: 3px 0 8px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .site-header nav a { white-space: nowrap; }
+  .site-header .user-area { margin-left: auto; }
   .progress-summary { grid-template-columns: 1fr 1fr; }
   .progress-summary article { min-height: 100px; padding: 16px; }
   .progress-chart { gap: 7px; margin-top: 30px; }

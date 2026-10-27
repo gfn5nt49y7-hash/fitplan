@@ -14,6 +14,7 @@ import type {
   WorkoutSession
 } from "@fitplan/contracts";
 import AuthView from "./AuthView.vue";
+import EvidenceSources from "./EvidenceSources.vue";
 import MuscleAnatomy from "./MuscleAnatomy.vue";
 import TrainingLogic from "./TrainingLogic.vue";
 import { apiRequest, clearAccessToken, downloadWorkoutExport, getAccessToken } from "./api";
@@ -720,6 +721,7 @@ onBeforeUnmount(function () {
           </div>
         </div>
       </div>
+      <EvidenceSources area="progress" />
     </section>
 
     <section v-if="activePage === 'plans'" class="section">
@@ -864,6 +866,7 @@ onBeforeUnmount(function () {
           </div>
         </form>
       </section>
+      <EvidenceSources area="plans" />
     </section>
 
     <section v-if="activePage === 'library'" class="section library-section">
@@ -994,10 +997,12 @@ onBeforeUnmount(function () {
         <h3>没有找到匹配动作</h3>
         <p>尝试清空搜索词或切换筛选条件。</p>
       </div>
+      <EvidenceSources area="library" />
     </section>
 
     <section v-if="activePage === 'anatomy'" class="section anatomy-page">
       <MuscleAnatomy />
+      <EvidenceSources area="anatomy" />
     </section>
 
     <section v-if="activePage === 'plans' && selectedPlan" id="workout-panel" class="workout-panel">
@@ -1143,6 +1148,7 @@ onBeforeUnmount(function () {
           </ul>
         </article>
       </div>
+      <EvidenceSources area="records" />
     </section>
 
     <section v-if="activePage === 'profile'" class="section profile-section">

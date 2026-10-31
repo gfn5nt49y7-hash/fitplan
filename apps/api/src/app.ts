@@ -2,7 +2,7 @@ import Fastify, { type FastifyServerOptions } from "fastify";
 import cors from "@fastify/cors";
 import { z } from "zod";
 import type { ApiError, ApiSuccess, Profile } from "@fitplan/contracts";
-import { mockStore } from "./store.js";
+import { store } from "./store/index.js";
 
 const registerSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -95,10 +95,12 @@ function readBearerToken(authorization: string | undefined): string | undefined 
   return token || undefined;
 }
 
-function authenticate(authorization: string | undefined): { token: string; user: Profile } | undefined {
+async function authenticate(
+  authorization: string | undefined
+): Promise<{ token: string; user: Profile } | undefined> {
   const token = readBearerToken(authorization);
   if (!token) return undefined;
-  const user = mockStore.getUserByToken(token);
+  const user = await store.getUserByToken(token);
   return user ? { token, user } : undefined;
 }
 
@@ -111,15 +113,15 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.addHook("onSend", async (_request, reply, payload) => {
-    reply.header("x-fitplan-data-source", "file");
+    reply.header("x-fitplan-data-source", store.kind);
     return payload;
   });
 
   app.get("/api/v1/health", async () => ({
     status: "ok",
     service: "fitplan-api",
-    mode: "file",
-    persistence: "local-json"
+    mode: store.kind,
+    persistence: store.kind === "postgres" ? "postgresql" : "local-json"
   }));
 
   app.post("/api/v1/auth/register", async (request, reply) => {
@@ -128,7 +130,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
       return reply.status(400).send(failure("VALIDATION_ERROR", "注册信息格式不正确", request.id));
     }
 
-    const session = mockStore.registerUser(parsed.data);
+    const session = await store.registerUser(parsed.data);
     if (!session) {
       return reply.status(409).send(failure("EMAIL_EXISTS", "该邮箱已经注册", request.id));
     }
@@ -141,7 +143,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
       return reply.status(400).send(failure("VALIDATION_ERROR", "邮箱或密码格式不正确", request.id));
     }
 
-    const session = mockStore.loginUser(parsed.data);
+    const session = await store.loginUser(parsed.data);
     if (!session) {
       return reply.status(401).send(failure("INVALID_CREDENTIALS", "邮箱或密码错误", request.id));
     }
@@ -149,16 +151,16 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.post("/api/v1/auth/logout", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
-    mockStore.deleteSession(auth.token);
+    await store.deleteSession(auth.token);
     return reply.status(204).send();
   });
 
   app.get("/api/v1/auth/me", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
     }
@@ -166,7 +168,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.patch("/api/v1/auth/me", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
     }
@@ -176,7 +178,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
       return reply.status(400).send(failure("VALIDATION_ERROR", "昵称长度应为 2–40 个字符", request.id));
     }
 
-    const profile = mockStore.updateProfile(auth.user.id, parsed.data);
+    const profile = await store.updateProfile(auth.user.id, parsed.data);
     if (!profile) {
       return reply.status(404).send(failure("USER_NOT_FOUND", "用户不存在", request.id));
     }
@@ -184,12 +186,12 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.delete("/api/v1/auth/me", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
     }
 
-    const deleted = mockStore.deleteUser(auth.user.id);
+    const deleted = await store.deleteUser(auth.user.id);
     if (!deleted) {
       return reply.status(404).send(failure("USER_NOT_FOUND", "用户不存在", request.id));
     }
@@ -197,7 +199,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.get("/api/v1/me", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "登录已失效，请重新登录", request.id));
     }
@@ -205,13 +207,13 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.get("/api/v1/plans", async (request) => {
-    const auth = authenticate(request.headers.authorization);
-    return success(request.id, mockStore.listPlans(auth?.user.id));
+    const auth = await authenticate(request.headers.authorization);
+    return success(request.id, await store.listPlans(auth?.user.id));
   });
 
   app.get<{ Params: { planId: string } }>("/api/v1/plans/:planId", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
-    const plan = mockStore.getPlan(request.params.planId, auth?.user.id);
+    const auth = await authenticate(request.headers.authorization);
+    const plan = await store.getPlan(request.params.planId, auth?.user.id);
     if (!plan) {
       return reply.status(404).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
@@ -219,7 +221,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.post("/api/v1/plans", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
@@ -227,38 +229,40 @@ export function buildApp(options: FastifyServerOptions = {}) {
     if (!parsed.success) {
       return reply.status(400).send(failure("VALIDATION_ERROR", "自定义计划格式不正确", request.id));
     }
-    const plan = mockStore.createCustomPlan(auth.user.id, parsed.data);
+    const plan = await store.createCustomPlan(auth.user.id, parsed.data);
     return reply.status(201).send(success(request.id, plan));
   });
 
   app.delete<{ Params: { planId: string } }>("/api/v1/plans/:planId", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
-    const deleted = mockStore.deleteCustomPlan(auth.user.id, request.params.planId);
+    const deleted = await store.deleteCustomPlan(auth.user.id, request.params.planId);
     if (!deleted) {
       return reply.status(404).send(failure("PLAN_NOT_FOUND", "自定义计划不存在", request.id));
     }
     return reply.status(204).send();
   });
 
-  app.get("/api/v1/exercises", async (request) => success(request.id, mockStore.getExercises()));
+  app.get("/api/v1/exercises", async (request) =>
+    success(request.id, await store.getExercises())
+  );
 
   app.get("/api/v1/kinesiology", async (request) =>
-    success(request.id, mockStore.getKinesiologyModules())
+    success(request.id, await store.getKinesiologyModules())
   );
 
   app.get("/api/v1/workouts", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
-    return success(request.id, mockStore.listWorkouts(auth.user.id));
+    return success(request.id, await store.listWorkouts(auth.user.id));
   });
 
   app.get("/api/v1/workouts/export", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
@@ -266,7 +270,8 @@ export function buildApp(options: FastifyServerOptions = {}) {
     const rows = [
       ["date", "plan", "exercise", "set", "type", "weight_kg", "reps", "duration_seconds"]
     ];
-    for (const workout of mockStore.listWorkouts(auth.user.id)) {
+    const allWorkouts = await store.listWorkouts(auth.user.id);
+    for (const workout of allWorkouts) {
       for (const exercise of workout.exercises) {
         for (const set of exercise.sets) {
           rows.push([
@@ -293,7 +298,7 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.post("/api/v1/workouts", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
@@ -310,16 +315,19 @@ export function buildApp(options: FastifyServerOptions = {}) {
       } satisfies ApiError);
     }
 
-    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId, auth.user.id)) {
+    const requestedPlan = parsed.data.planId
+      ? await store.getPlan(parsed.data.planId, auth.user.id)
+      : undefined;
+    if (parsed.data.planId && !requestedPlan) {
       return reply.status(400).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
 
-    const workout = mockStore.createWorkout(auth.user.id, parsed.data);
+    const workout = await store.createWorkout(auth.user.id, parsed.data);
     return reply.status(201).send(success(request.id, workout));
   });
 
   app.patch<{ Params: { workoutId: string } }>("/api/v1/workouts/:workoutId", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
@@ -329,11 +337,14 @@ export function buildApp(options: FastifyServerOptions = {}) {
       return reply.status(400).send(failure("VALIDATION_ERROR", "训练记录格式不正确", request.id));
     }
 
-    if (parsed.data.planId && !mockStore.getPlan(parsed.data.planId, auth.user.id)) {
+    const requestedPlan = parsed.data.planId
+      ? await store.getPlan(parsed.data.planId, auth.user.id)
+      : undefined;
+    if (parsed.data.planId && !requestedPlan) {
       return reply.status(400).send(failure("PLAN_NOT_FOUND", "训练计划不存在", request.id));
     }
 
-    const workout = mockStore.updateWorkout(auth.user.id, request.params.workoutId, parsed.data);
+    const workout = await store.updateWorkout(auth.user.id, request.params.workoutId, parsed.data);
     if (!workout) {
       return reply.status(404).send(failure("WORKOUT_NOT_FOUND", "训练记录不存在", request.id));
     }
@@ -341,12 +352,12 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.delete<{ Params: { workoutId: string } }>("/api/v1/workouts/:workoutId", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
 
-    const deleted = mockStore.deleteWorkout(auth.user.id, request.params.workoutId);
+    const deleted = await store.deleteWorkout(auth.user.id, request.params.workoutId);
     if (!deleted) {
       return reply.status(404).send(failure("WORKOUT_NOT_FOUND", "训练记录不存在", request.id));
     }
@@ -354,11 +365,11 @@ export function buildApp(options: FastifyServerOptions = {}) {
   });
 
   app.get("/api/v1/stats/weekly", async (request, reply) => {
-    const auth = authenticate(request.headers.authorization);
+    const auth = await authenticate(request.headers.authorization);
     if (!auth) {
       return reply.status(401).send(failure("UNAUTHORIZED", "请先登录", request.id));
     }
-    return success(request.id, mockStore.getWeeklyStats(auth.user.id));
+    return success(request.id, await store.getWeeklyStats(auth.user.id));
   });
 
   return app;

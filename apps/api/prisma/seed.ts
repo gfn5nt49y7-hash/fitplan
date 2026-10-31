@@ -421,7 +421,8 @@ async function main() {
         dayNumber: "dayNumber" in item ? item.dayNumber : 1,
         position: item.position,
         targetSets: item.targetSets,
-        targetReps: item.targetReps
+        targetReps: "targetReps" in item ? item.targetReps : null,
+        targetSeconds: "targetSeconds" in item ? item.targetSeconds : null
       }))
     });
   }

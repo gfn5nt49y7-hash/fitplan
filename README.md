@@ -31,7 +31,7 @@ FitPlan 是一个面向健身初学者的轻量训练计划与训练记录网站
 正式版采用 pnpm monorepo：
 
 - apps/web：Vue 3 + TypeScript + Vite
-- apps/api：Fastify + TypeScript，当前使用内存模拟数据
+- apps/api：Fastify + TypeScript，数据存 PostgreSQL（Prisma），可降级为本地 JSON 文件
 - packages/contracts：Web、API 与未来微信小程序共享的数据契约
 
 ## 本地开发
@@ -41,6 +41,10 @@ FitPlan 是一个面向健身初学者的轻量训练计划与训练记录网站
 安装依赖：
 
     pnpm install
+
+先启动数据库（首次使用见下一节）：
+
+    scripts\db-start.cmd
 
 启动 API：
 
@@ -56,6 +60,33 @@ FitPlan 是一个面向健身初学者的轻量训练计划与训练记录网站
 - API：http://localhost:8787
 - 健康检查：http://localhost:8787/api/v1/health
 
+## 数据库（PostgreSQL）
+
+开发环境使用便携版 PostgreSQL 17，免安装、不注册系统服务，只监听本机：
+
+| 项目 | 位置 |
+|------|------|
+| 程序 | `C:\Users\Lenovo\tools\pg17` |
+| 数据目录 | `C:\Users\Lenovo\pgdata\fitplan` |
+| 端口 | 5433（避免和系统里其他 PostgreSQL 冲突） |
+| 库 / 用户 | `fitplan` / `fitplan` |
+| 连接串 | 见 `apps/api/.env` 的 `DATABASE_URL` |
+
+常用命令：
+
+    scripts\db-start.cmd        # 启动数据库
+    scripts\db-stop.cmd         # 停止数据库
+    scripts\db-psql.cmd         # 进入 psql，可直接写 SQL
+
+    pnpm --filter @fitplan/api db:deploy   # 应用迁移（建表/改表）
+    pnpm --filter @fitplan/api db:seed     # 灌入 18 个动作 + 12 个内置计划
+    pnpm --filter @fitplan/api db:studio   # 打开 Prisma Studio 图形界面看数据
+
+存储层有两套实现，用 `FITPLAN_STORAGE` 切换：
+
+- `postgres`：走 Prisma + PostgreSQL（默认，适合正常开发）
+- `json`：写 `apps/api/.data/fitplan-store.json`，不需要数据库，适合离线看前端
+
 ## 质量检查
 
     pnpm typecheck
@@ -66,7 +97,9 @@ GitHub Actions 会在 develop 和 main 分支推送时执行以上检查。
 
 ## 开发阶段说明
 
-当前后端使用内存模拟数据，API 服务重启后训练记录会清空。这是为了先稳定前端接口和交互；下一步接入 PostgreSQL、手机号认证和云端数据同步。
+数据已落 PostgreSQL：重启 API 不再丢数据，训练记录、自定义计划、登录会话都存表里，写入走事务、外键级联删除、重量用 `Decimal(6,2)` 保证精度。`FITPLAN_STORAGE=json` 时回退到本地 JSON 文件，方便没有数据库时也能跑。
+
+下一步：手机号认证、微信小程序端、云端部署与自动备份。
 
 ## 开发版功能
 

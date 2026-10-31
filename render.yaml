@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: fitplan-api
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @fitplan/api exec prisma generate && pnpm --filter @fitplan/api build && pnpm --filter @fitplan/api exec prisma migrate deploy && pnpm --filter @fitplan/api db:seed
+    startCommand: pnpm --filter @fitplan/api start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: FITPLAN_STORAGE
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false

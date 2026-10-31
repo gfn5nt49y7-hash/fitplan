@@ -99,7 +99,16 @@ GitHub Actions 会在 develop 和 main 分支推送时执行以上检查。
 
 数据已落 PostgreSQL：重启 API 不再丢数据，训练记录、自定义计划、登录会话都存表里，写入走事务、外键级联删除、重量用 `Decimal(6,2)` 保证精度。`FITPLAN_STORAGE=json` 时回退到本地 JSON 文件，方便没有数据库时也能跑。
 
-下一步：手机号认证、微信小程序端、云端部署与自动备份。
+下一步：手机号认证、微信小程序端与自动备份。
+
+## 云端部署
+
+仓库已包含 Render Blueprint（`render.yaml`）和免费部署指南，采用 Cloudflare Pages + Render + Neon PostgreSQL：
+
+- 完整步骤：`docs/deployment.md`
+- 前端通过 `VITE_API_BASE_URL` 指定线上 API
+- API 通过 `WEB_ORIGIN` 允许前端跨域访问
+- 云端连接串和密钥只填写在平台环境变量中，不提交到 Git
 
 ## 开发版功能
 

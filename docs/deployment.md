@@ -1,6 +1,6 @@
 # FitPlan 免费部署指南
 
-目标架构：Cloudflare Pages 托管 Vue 前端，Render 运行 Fastify API，Neon 提供云端 PostgreSQL。三者都有免费套餐，代码和数据均不绑定厂商，后续可以迁移。
+目标架构：Cloudflare Pages 托管 Vue 前端，Render 运行 Fastify API，Neon 提供云端 PostgreSQL。三者都有免费套餐，代码和数据均不绑定厂商，后续可以迁移。Render 免费 Web Service 会要求绑卡做身份验证（`$1` 临时预授权、会撤销，非收费），详见 2.1 节。
 
 ## 架构与环境变量
 
@@ -20,7 +20,13 @@
 
 在 Render 选择 **New → Blueprint**，连接 GitHub 仓库并选择 `develop` 分支（注意：仓库默认分支是 `main`，代码在 `develop`，不要选错）。仓库根目录的 `render.yaml` 会定义免费 Web Service。
 
-注册时建议直接用 **Sign in with GitHub**：用 Apple 或邮箱注册会要求先完成邮件验证，容易卡在验证环节。
+注册账号这一步容易踩坑，按下面顺序来：
+
+1. 优先用**常用邮箱（QQ / 163 / Gmail 等）+ 密码**直接注册，验证邮件直达你的收件箱；完成验证后再到 Render 里授权连接 GitHub 仓库。
+2. 如果 GitHub 账户是用 **Sign in with Apple** 注册的，GitHub 对外提供的是 Apple 生成的随机中转地址 `xxxxx@privaterelay.appleid.com`。用 GitHub 登录 Render 时，Render 会拿到这个地址并把验证邮件发过去，再由 Apple 转发到你的真实邮箱；转发可能延迟、被判为垃圾邮件，或因中转地址被停用而彻底收不到。**所以「用 GitHub 登录跳过邮箱验证」并不成立，不要走这条路。**
+3. 若确实要用 GitHub 登录，先到 GitHub → Settings → Emails 添加一个常用邮箱并设为 Primary，再回来登录。
+
+验证邮件收不到时：iPhone 设置 → 顶部 Apple ID → iCloud → 隐藏邮件地址，找到该中转地址查看「转发至」的真实邮箱，然后去那个邮箱的垃圾邮件里搜 `Render`。
 
 需要填写的环境变量：
 
@@ -48,6 +54,26 @@ https://<你的API域名>/api/v1/health
 应返回 `status: ok`、`mode: postgres`、`persistence: postgresql`。
 
 注意：Render 免费 Web Service 闲置 15 分钟后会休眠，下次请求可能需要约一分钟唤醒。不要在 Render 免费实例中使用其本地文件保存业务数据；本项目使用 Neon，不受实例本地文件系统易失性的影响。
+
+### 2.1 绑卡验证与零卡备选
+
+Render 在创建免费 Web Service 时可能要求添加银行卡，这是**平台级的反滥用 / 身份验证**，与注册邮箱、GitHub 还是 Apple 登录都无关，换邮箱或换登录方式均无法绕过。
+
+- 官方说明：`$1 USD` 交易只是验证卡片有效性的安全检查，**完成后立即撤销并退款**，不是扣费、不是订阅；免费套餐本身 0 元。
+- 接受借记卡（debit card），带 Visa / Mastercard 且支持国际支付即可。
+- 本仓库 `render.yaml` 明确写了 `plan: free`，不含付费实例类型，因此过验证后不会产生计算费用。若 blueprint 里写了付费实例类型，也会弹绑卡，那种是真实计费，需检查配置。
+- 卡只用于验证身份，**不构成平台绑定**：代码在 GitHub、数据在 Neon、前端域名可随时更换，迁移路径见第 5 节。
+
+换到其他 PaaS 基本躲不开这一步：Koyeb 免费 Web Service 同样要卡（约 $29 预授权），Railway 只有试用额度、用完需绑卡，Fly.io 自 2024 年起已无免费层。
+
+确实不想绑卡时只剩两条路：
+
+| 方案 | 做法 | 代价 |
+| --- | --- | --- |
+| 本地后端 + 内网穿透（临时演示） | 本机以 `pnpm --filter @fitplan/api start` 启动 API，用 Cloudflare Tunnel 暴露 HTTPS 地址；Cloudflare Pages 的 `VITE_API_BASE_URL` 与 API 的 `WEB_ORIGIN` 都填这个地址 | 电脑需常开、依赖家庭网络，不是真·云端；但代码零改动，当天即可分享链接 |
+| 改造成 Serverless | 把 Fastify 入口改为 serverless handler，Prisma 改用 Neon serverless driver 或 Prisma Accelerate，再部署到 Vercel / Netlify / Cloudflare Workers 的免费层 | 需改动较多代码；Cloudflare Workers 无法运行 Prisma 原生引擎，只支持后两者 |
+
+结论：若手上有可用的国际支付卡，直接用 `$1` 验证是代价最小、改动为零的路径。
 
 ## 3. 部署 Cloudflare Pages 前端
 

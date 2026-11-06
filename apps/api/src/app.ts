@@ -107,8 +107,14 @@ async function authenticate(
 export function buildApp(options: FastifyServerOptions = {}) {
   const app = Fastify(options);
 
+  const configuredOrigins = (process.env.WEB_ORIGIN ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const allowedOrigins = configuredOrigins.length ? configuredOrigins : ["http://localhost:5173"];
+
   app.register(cors, {
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
+    origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
     credentials: true
   });
 

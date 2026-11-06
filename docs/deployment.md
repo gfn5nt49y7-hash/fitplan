@@ -18,14 +18,24 @@
 
 ## 2. 部署 Render API
 
-在 Render 选择 **New → Blueprint**，连接 GitHub 仓库并选择 `develop` 分支。仓库根目录的 `render.yaml` 会定义免费 Web Service。
+在 Render 选择 **New → Blueprint**，连接 GitHub 仓库并选择 `develop` 分支（注意：仓库默认分支是 `main`，代码在 `develop`，不要选错）。仓库根目录的 `render.yaml` 会定义免费 Web Service。
+
+注册时建议直接用 **Sign in with GitHub**：用 Apple 或邮箱注册会要求先完成邮件验证，容易卡在验证环节。
 
 需要填写的环境变量：
 
 | 变量 | 值 |
 | --- | --- |
-| `DATABASE_URL` | Neon 的 PostgreSQL 连接串 |
-| `WEB_ORIGIN` | Cloudflare Pages 的完整前端地址，例如 `https://fitplan.pages.dev`，不要带末尾斜杠 |
+| `DATABASE_URL` | Neon 的 PostgreSQL 连接串（只在 Render 里粘贴，不要发给任何人或写进仓库） |
+| `WEB_ORIGIN` | 前端完整地址，例如 `https://fitplan.pages.dev`，不要带末尾斜杠 |
+
+`WEB_ORIGIN` 支持**逗号分隔多个地址**，用于同时放行正式域名和 Pages 预览域名，例如：
+
+```text
+https://fitplan.pages.dev,https://a1b2c3d4.fitplan.pages.dev
+```
+
+前端还没部署时可以先填 `http://localhost:5173`，等拿到 Pages 地址后再回来改成实际地址并重新部署一次。
 
 `FITPLAN_STORAGE=postgres`、`NODE_VERSION=22` 已在配置中固定。健康检查路径为 `/api/v1/health`。
 

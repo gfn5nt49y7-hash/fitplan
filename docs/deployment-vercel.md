@@ -24,7 +24,9 @@ Vercel Hobby 是另一条路：官方文档写明免费层「没有账单周期�
 
 ## 你的操作步骤
 
-1. 打开 `vercel.com` → **Continue with GitHub**，用现有 GitHub 账号授权登录。Hobby 是默认免费层，不要点任何 Upgrade / Pro trial。
+1. 打开 **`vercel.com/signup`（注册页）** → **Continue with GitHub**，用现有 GitHub 账号授权。**必须走 Sign up，不要走 Log in**：在登录页点 GitHub 会报 `Social Account is not yet connected to any Vercel user`，因为登录页只匹配已有账户，不会自动开户；若已看到这条黄色提示，直接点其中的 **Sign up?** 即可。Hobby (Free) 是默认免费层，不要点任何 Upgrade / Pro trial。
+
+   用 Git 平台注册是「授权即完成」，Vercel 官方流程不要求邮箱验证（只有用邮箱注册才发六位 OTP），因此不会重演 Apple 隐藏邮件地址收不到信的问题。若注册过程中让填邮箱，填你能正常收信的常用邮箱，不要填 `@privaterelay.appleid.com`。
 2. **Add New → Project → Import** 仓库 `gfn5nt49y7-hash/fitplan`，分支务必选 **`develop`**（仓库默认分支 `main` 是早期静态版，代码在 `develop`）。
 3. Framework Preset 选 **Other**，Root Directory 留空（仓库根）。`vercel.json` 已经固定了安装命令、构建命令和产物目录，不需要手填。
 4. 在 **Environment Variables** 添加：

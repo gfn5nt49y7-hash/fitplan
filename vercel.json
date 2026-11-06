@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "corepack enable && pnpm --filter @fitplan/api exec prisma generate && pnpm --filter @fitplan/api db:deploy && pnpm --filter @fitplan/api db:seed && pnpm --filter @fitplan/web build",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": "node_modules/.prisma/client/**,apps/api/node_modules/.prisma/client/**,node_modules/.pnpm/**/node_modules/.prisma/client/**"
+    }
+  }
+}

@@ -1,6 +1,37 @@
 # FitPlan 零卡部署（Vercel Hobby + Neon）
 
-## 为什么需要这份文档
+## 当前线上状态（2026-11-12 实测）
+
+已从本机用 Vercel CLI 完成生产部署，绕开网页注册、GitHub push 与本机符号链接限制：
+
+| 项目 | 值 |
+| --- | --- |
+| 项目 | `2201288621-6192/fitplan` |
+| 线上地址 | `https://fitplan-hazel.vercel.app` |
+| 状态 | `READY` / production，`lambdaRuntimeStats: {"nodejs":1}`（函数已打包） |
+| 登录账户 | Vercel CLI 设备码授权，Hobby 免费层，未绑定信用卡 |
+| 当前存储 | `FITPLAN_STORAGE=json` + `FITPLAN_PERSISTENCE=off`，**内存模式，数据不持久** |
+| 待办 | 在项目 Settings → Environment Variables 填 `DATABASE_URL`（Neon 直连串），把 `FITPLAN_STORAGE` 改为 `postgres`，再 `vercel --prod` 重新部署 |
+
+> 当前链接能打开、能注册体验，但 Serverless 冷启动后数据会丢。要像正式产品一样持久，必须补上 Neon。
+
+部署与运维命令（每次都要带中文主机名补丁，见下文）：
+
+```bash
+export NODE_OPTIONS="--require <仓库根>/scripts/vercel-hostname-ascii.cjs"
+vercel whoami                 # 确认登录态
+vercel ls fitplan --json      # 查看部署状态
+vercel env ls                 # 查看环境变量
+vercel inspect <部署URL> --logs   # 查看构建日志
+vercel logs <部署URL>         # 查看运行时日志
+vercel --prod                 # 重新部署
+```
+
+`.vercelignore` 用于阻止本机 `apps/api/.env`（含本机数据库口令）和 `.data/` 被上传；Vercel CLI 上传时**不完全遵循** `.gitignore`，这份文件不能删。环境变量要用 `vercel env add` 正式写入项目，命令行 `--env` 只对单次部署生效，重新部署会丢。
+
+已知非阻断告警：Vercel 函数打包器会提示 `Using built-in TypeScript ... since typescript is missing from devDependencies`，并打印一批 `TS2345` / `TS2305` 类型错误（Zod 推断类型与 `@prisma/client` 导出）。原因是 Vercel 在根工作区用内置 TS 做全量类型检查，与本地 pnpm workspace 的类型解析不一致；**构建仍会完成、函数仍会打出包**（以 `vercel ls --json` 的 `lambdaRuntimeStats` 为准）。本地 `pnpm -r typecheck` 是全绿的，不必为此改业务代码。
+
+国内网络提示：`vercel.app` 域名常被 DNS 污染（本机解析到 `202.160.129.6`），CLI 诊断请求也可能被代理拦截。这属于访问侧问题，不影响部署本身；用 `vercel ls` / `vercel inspect` 等平台 API 判断状态最可靠。
 
 Render 的免费 Web Service 会要求绑定银行卡做反滥用 / 身份验证（`$1` 临时预授权，完成后撤销退款）。没有可国际支付的卡时，无论换邮箱、换 GitHub 还是 Apple 登录都绕不过去。
 

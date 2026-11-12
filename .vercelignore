@@ -1,0 +1,25 @@
+# Vercel CLI 上传时排除的文件（不完全遵循 .gitignore）
+# 本机开发密钥与本地用户数据绝不能进云端构建环境
+
+# 环境变量文件：只保留示例
+.env
+.env.*
+!.env.example
+apps/api/.env
+apps/api/.env.*
+!apps/api/.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# 本地 JSON 存储数据
+apps/api/.data/
+**/.data/
+
+# 构建产物（云端会重新生成）
+apps/api/dist/
+apps/web/dist/
+.vercel/
+node_modules/
+coverage/
+*.log

@@ -11,3 +11,6 @@ Thumbs.db
 playwright-report/
 test-results/
 apps/api/.data/
+.vercel/
+.vercel/output/
+.vercel

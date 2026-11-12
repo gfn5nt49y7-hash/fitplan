@@ -33,6 +33,23 @@ vercel --prod                 # 重新部署
 
 国内网络提示：`vercel.app` 域名常被 DNS 污染（本机解析到 `202.160.129.6`），CLI 诊断请求也可能被代理拦截。这属于访问侧问题，不影响部署本身；用 `vercel ls` / `vercel inspect` 等平台 API 判断状态最可靠。
 
+## 访客打不开链接时，第一件事：关掉 Deployment Protection
+
+Vercel 新项目（尤其经 CLI / 智能体创建）默认会开启 **Vercel Authentication**，项目设置里表现为 `ssoProtection: {"deploymentType": "all_except_custom_domains"}`。此时任何未登录 Vercel 的访客打开 `*.vercel.app` 只会看到授权页，看起来就像"网站打不开"。而 `vercel curl` 等诊断命令会自动给项目加 `protectionBypass`（automation-bypass）密钥，因此**从命令行看一切正常，唯独普通浏览器进不去**，极具迷惑性。
+
+检查与关闭：
+
+```bash
+export NODE_OPTIONS="--require <仓库根>/scripts/vercel-hostname-ascii.cjs"
+vercel api /v9/projects/fitplan --raw | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('ssoProtection'))"
+PID=$(vercel api /v9/projects/fitplan --raw | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+printf '{"ssoProtection": null}' | vercel api "/v9/projects/$PID" -X PATCH --input -
+```
+
+确认 `ssoProtection` 与 `passwordProtection` 均为 `null` 即可，项目级设置即时生效，不需要重新部署。也可在网页 Settings → Deployment Protection 里关掉 Vercel Authentication。
+
+> 若关闭后国内仍提示连接失败，那是 `vercel.app` 域名在国内被 DNS 污染 / SNI 阻断，属于平台可达性问题，不是部署故障。此时要么让访客走代理，要么把应用发布到国内可访问的托管（代价：需改用内存/JSON 存储，数据不持久）。
+
 Render 的免费 Web Service 会要求绑定银行卡做反滥用 / 身份验证（`$1` 临时预授权，完成后撤销退款）。没有可国际支付的卡时，无论换邮箱、换 GitHub 还是 Apple 登录都绕不过去。
 
 Vercel Hobby 是另一条路：官方文档写明免费层「没有账单周期」，注册不需要信用卡；用已有的 GitHub 账号一键登录即可。Cloudflare 官网也明确写着 "No credit card required"。Neon 免费 PostgreSQL 同样不需要卡。

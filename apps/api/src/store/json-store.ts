@@ -936,3 +936,53 @@ export const jsonStore: FitPlanStore = {
   deleteWorkout,
   getWeeklyStats
 };
+
+/**
+ * 管理端专用导出（不属于 FitPlanStore 接口，仅 JSON 实现提供）。
+ * 返回脱敏视图，绝不暴露 passwordHash / passwordSalt / 访问令牌。
+ */
+export interface AdminUserView {
+  id: string;
+  email: string;
+  displayName: string;
+  status: Profile["status"];
+  workoutCount: number;
+  customPlanCount: number;
+  activeSessionCount: number;
+}
+
+export function listUsersForAdmin(): AdminUserView[] {
+  const now = Date.now();
+  return Array.from(usersById.values()).map((user) => ({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    status: user.status,
+    workoutCount: workoutsByUser.get(user.id)?.length ?? 0,
+    customPlanCount: customPlansByUser.get(user.id)?.length ?? 0,
+    activeSessionCount: Array.from(sessions.values()).filter(
+      (session) => session.userId === user.id && session.expiresAt.getTime() > now
+    ).length
+  }));
+}
+
+/** 停用会一并撤销该用户的全部会话，使限制立即生效。 */
+export function setUserStatusForAdmin(
+  userId: string,
+  status: "active" | "disabled"
+): boolean {
+  const user = usersById.get(userId);
+  if (!user) return false;
+  user.status = status;
+  if (status === "disabled") {
+    for (const [tokenHash, session] of sessions) {
+      if (session.userId === userId) sessions.delete(tokenHash);
+    }
+  }
+  persistStore();
+  return true;
+}
+
+export function deleteUserForAdmin(userId: string): boolean {
+  return deleteUser(userId);
+}

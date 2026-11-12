@@ -39,7 +39,7 @@ Vercel Hobby 是另一条路：官方文档写明免费层「没有账单周期�
    | `VITE_API_BASE_URL` | **不要填**（同源） |
 
    `NODE_VERSION` 用平台默认 22 即可，或在项目 Settings → General 里确认。
-5. 点 **Deploy**。构建日志应依次出现 `prisma generate` → `prisma migrate deploy` → seed → `vite build`。迁移和种子脚本在每次部署时执行，种子按 slug 更新内置数据，不会删除用户数据。
+5. 点 **Deploy**。构建日志应依次出现 `prisma generate` → `prisma migrate deploy` → seed → `vite build`。迁移和种子脚本在每次部署时执行，种子按 slug 更新内置数据，不会删除用户数据。构建由 `scripts/vercel-build.mjs` 驱动：只有当 `DATABASE_URL` 存在时才执行迁移与种子，因此没有配置数据库的预览部署也能构建成功（函数退化为内存存储）。
 
 ## 部署后验收
 
@@ -67,6 +67,37 @@ FITPLAN_STORAGE=json pnpm --filter @fitplan/api exec tsx ../../scripts/verify-ve
 ```
 
 预期输出 `status=200` 和一段健康检查 JSON。
+
+## 更快的路径：先部署、后开户（Vercel 免账号部署）
+
+Vercel 自 2026 年 10 月起支持**不登录就部署**。Vercel CLI 65 提供的 `vercel deploy --temporary` 会在本地构建后上传，返回一个 `tmp.now` 域名的真实线上链接，同时打印一个 **claim URL**：打开它把项目认领到账户即可长期保留（认领链接不要外传，任何人拿到都能认领）。未认领的部署约 1 小时后过期。
+
+```bash
+npm i -g vercel@latest
+vercel deploy --temporary --yes \
+  --env FITPLAN_STORAGE=json \
+  --env FITPLAN_PERSISTENCE=off
+```
+
+这条路径同时绕开了网页注册的两个坑：`Social Account is not yet connected to any Vercel user` 和 Apple 隐藏邮件地址收不到验证信。开户也可以走命令行：
+
+```bash
+vercel signup --email 你的常用邮箱
+```
+
+`--email` 是官方为「编码智能体运行命令」准备的参数，CLI 会用该邮箱打开注册页；完成后 `vercel whoami` 确认登录态，再用 `vercel --prod` 部署正式版本。
+
+### Windows 上做本地临时部署的限制（实测）
+
+`--temporary` 是**本地构建**，Vercel 构建器缓存需要创建符号链接。在未开启「开发人员模式」或没有管理员权限的 Windows 上会报：
+
+```text
+EPERM: operation not permitted, symlink ...
+```
+
+随后重试还会遇到缓存清理失败（`BUILD_FAILED / safe-delete`）。`ln -s` 可直接验证本机是否允许创建符号链接。**这不影响正式部署**：登录后在 Vercel 云端（Linux）构建，不会碰本地符号链接。因此在 Windows 上应跳过 `--temporary`，直接走 `vercel signup` → `vercel --prod`。
+
+另外，无 `DATABASE_URL` 时函数以内存 JSON 存储运行（`FITPLAN_STORAGE=json` + `FITPLAN_PERSISTENCE=off`），适合演示，**数据不持久**；要真正持久必须配 Neon。
 
 ## 临时兜底：连账号都不用注册
 

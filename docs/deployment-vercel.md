@@ -99,6 +99,33 @@ EPERM: operation not permitted, symlink ...
 
 另外，无 `DATABASE_URL` 时函数以内存 JSON 存储运行（`FITPLAN_STORAGE=json` + `FITPLAN_PERSISTENCE=off`），适合演示，**数据不持久**；要真正持久必须配 Neon。
 
+### 中文计算机名会让 Vercel CLI 崩溃（本机必读）
+
+本机计算机名是中文（`唐太宗钦赐玄黑镀银彩光七星盘`）。Vercel CLI 65 的 native 二进制会把 `os.hostname()` 塞进 HTTP 请求 header，而 header 只接受 Latin-1 字符，于是 `vercel login`、`vercel deploy` 全部报：
+
+```text
+TypeError: Cannot convert argument to a ByteString because
+the character at index 0 has a value of 21776 which is greater than 255.
+```
+
+覆盖 `COMPUTERNAME` 环境变量**无效**（CLI 读的是系统 API），`VERCEL_CLI_USE_NATIVE_BINARY=0` 也已被新版移除。**不要为此改系统主机名**，用仓库里的预加载补丁把 `os.hostname()` 伪装成 ASCII 即可：
+
+```bash
+# Git Bash
+export NODE_OPTIONS="--require C:/Users/Lenovo/Documents/Codex/2026-10-25/github/fitplan-next/scripts/vercel-hostname-ascii.cjs"
+vercel login
+vercel --prod
+```
+
+```powershell
+# PowerShell
+$env:NODE_OPTIONS = "--require C:\Users\Lenovo\Documents\Codex\2026-10-25\github\fitplan-next\scripts\vercel-hostname-ascii.cjs"
+vercel login
+vercel --prod
+```
+
+补丁见 `scripts/vercel-hostname-ascii.cjs`。`NODE_OPTIONS` 只在当前终端会话有效，不影响其他程序。登录走设备码（CLI 打印 `vercel.com/oauth/device?user_code=...`），用已有 GitHub 账号授权即可，**不会要求信用卡**。
+
 ## 临时兜底：连账号都不用注册
 
 如果不想等 Vercel 构建，也可以立刻得到一个可分享的演示链接：本机启动 API，用 Cloudflare Quick Tunnel 暴露 HTTPS 地址；前端把 `apps/web/dist` 整个文件夹拖到 `app.netlify.com/drop`（Netlify Drop，无需账号、无需卡）。此时构建前端要把 `VITE_API_BASE_URL` 设为隧道地址，API 的 `WEB_ORIGIN` 设为 Netlify 地址。

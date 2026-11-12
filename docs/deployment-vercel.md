@@ -48,7 +48,7 @@ printf '{"ssoProtection": null}' | vercel api "/v9/projects/$PID" -X PATCH --inp
 
 确认 `ssoProtection` 与 `passwordProtection` 均为 `null` 即可，项目级设置即时生效，不需要重新部署。也可在网页 Settings → Deployment Protection 里关掉 Vercel Authentication。
 
-> 若关闭后国内仍提示连接失败，那是 `vercel.app` 域名在国内被 DNS 污染 / SNI 阻断，属于平台可达性问题，不是部署故障。此时要么让访客走代理，要么把应用发布到国内可访问的托管（代价：需改用内存/JSON 存储，数据不持久）。
+> 若关闭后国内仍提示连接失败，那是 `vercel.app` 域名在国内被 DNS 污染 / SNI 阻断，属于平台可达性问题，不是部署故障。此时要么让访客走代理，要么使用国内可直连的独立版（见工作区 `fitplan-standalone/README.md`，线上 `https://fitplan-demo.app.workbuddy.host/?sharecode=YJVURJSC5D`）。该版本为单端口内存存储演示版，**数据不持久**；正式持久化仍用 Vercel + Neon。
 
 Render 的免费 Web Service 会要求绑定银行卡做反滥用 / 身份验证（`$1` 临时预授权，完成后撤销退款）。没有可国际支付的卡时，无论换邮箱、换 GitHub 还是 Apple 登录都绕不过去。
 
